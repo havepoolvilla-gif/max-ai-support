@@ -1,89 +1,65 @@
+## Plan: Wire LMS to Lovable Cloud (Supabase) with Google Auth + Admin CMS
 
-## Scope (this iteration)
+### 1. Enable Lovable Cloud & Schema
 
-Per your direction, this first pass focuses on the **frontend foundation**: design system, landing/dashboard layout, and the bite-sized course player — all driven by mock data. Authentication, Lovable Cloud, admin CMS, and the subscription schema are scoped but **deferred to the next iteration** so we can lock the look and player UX first.
+Enable Cloud, then create migration with these tables (all in `public`, with GRANTs + RLS):
 
-## 1. Design system (dark-tech, crimson)
+- **`profiles`** — `id uuid PK → auth.users`, `email`, `full_name`, `avatar_url`, `subscription_status` (enum: `free` | `pro` | `lifetime`, default `free`), `created_at`. Auto-created via `handle_new_user()` trigger on `auth.users` insert.
+- **`app_role`** enum (`admin`, `student`) + **`user_roles`** table + `has_role(uuid, app_role)` security-definer function.
+- **`courses`** — `id`, `title`, `description`, `thumbnail_url`, `instructor`, `sort_order`, `created_at`.
+- **`modules`** — `id`, `course_id FK`, `title`, `sort_order`, `created_at`.
+- **`lessons`** — `id`, `module_id FK`, `title`, `description`, `video_url`, `duration_seconds`, `sort_order`, `created_at`.
+- **`lesson_progress`** — `id`, `user_id FK → auth.users`, `lesson_id FK`, `completed_at`, unique(`user_id`, `lesson_id`).
 
-Update `src/styles.css` tokens (oklch):
-- `--background` deep black (~oklch(0.14 0 0))
-- `--card` / `--popover` elevated dark grey (~oklch(0.18 0.01 260))
-- `--foreground` near-white, `--muted-foreground` cool grey
-- `--primary` crimson red (~oklch(0.55 0.22 25)), `--primary-foreground` white
-- `--accent` subtle crimson tint, `--border` low-opacity white
-- Add `--gradient-primary` (crimson → darker crimson), `--gradient-hero` (black → crimson glow), `--shadow-glow` (crimson 30% blur), `--shadow-elevated`
-- Force dark by default (apply `.dark` class on `<html>` in `__root.tsx`)
-- Typography: load Space Grotesk (display) + Inter (body) via `<link>` in `__root.tsx` head, register as `--font-display` / `--font-sans` in `@theme`
+**RLS policies:**
+- `profiles`: user can select/update own row; admins can select all.
+- `courses` / `modules` / `lessons`: `SELECT` to `authenticated` (any signed-in user can view); `INSERT/UPDATE/DELETE` only via `has_role(auth.uid(),'admin')`.
+- `lesson_progress`: user can CRUD own rows; admins can read all.
+- `user_roles`: user can read own; only admins write.
 
-Reusable primitives:
-- `GlowCard` (card with crimson edge glow on hover)
-- `StatusBadge` (Free / Pro variants)
-- `ProgressBar` (crimson fill)
+### 2. Google Authentication
 
-## 2. Routes
+- Configure Google provider via `supabase--configure_social_auth`.
+- Create `/auth` public route — branded dark-tech sign-in card with single **"เข้าสู่ระบบด้วย Google"** button calling `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/dashboard" })`.
+- Root route: wire single `onAuthStateChange` listener (filtered to SIGNED_IN/OUT/USER_UPDATED) to invalidate router + queries.
+- Move `dashboard`, `learn.$courseId`, and new `admin` route under `src/routes/_authenticated/` (managed gate redirects unauthenticated → `/auth`).
+- TopNav: show real user email/avatar from session; sign-out button follows hygiene (cancel queries → clear cache → signOut → navigate `/auth`).
+- Landing CTA → `/auth`.
 
-```
-src/routes/
-  __root.tsx           (force dark, fonts, nav shell)
-  index.tsx            (landing: hero, features, CTA)
-  dashboard.tsx        (student dashboard)
-  learn.$courseId.tsx  (course player)
-```
+### 3. Server Functions (TanStack `createServerFn`)
 
-All routes use top-level (public) for now; once auth lands, `dashboard` and `learn.*` move under `_authenticated/`.
+Client-safe `.functions.ts` files under `src/lib/`:
 
-## 3. Landing page (`/`)
+- `courses.functions.ts` — `listCoursesWithProgress()` (auth required): returns courses → modules → lessons + current user's `completed` set in one shape matching existing mock structure. Used by dashboard + player.
+- `progress.functions.ts` — `toggleLessonComplete({ lessonId })`, `setLastWatched({ courseId, lessonId })`.
+- `admin.functions.ts` — protected by `requireSupabaseAuth` + inline `has_role('admin')` check:
+  - `upsertCourse`, `deleteCourse`
+  - `upsertModule`, `deleteModule`
+  - `upsertLesson`, `deleteLesson`
+  - `listUsers`, `updateUserSubscription({ userId, status })`
+- First signed-in user is auto-granted `admin` role via a one-time bootstrap server fn (or seeded by user email in migration if user provides email).
 
-- Hero: bold headline, crimson glow, subtle animated grid/scanline background, "Sign in with Google" CTA (visual only this pass, routes to `/dashboard`)
-- Feature grid: bite-sized lessons, progress tracking, AI-curated paths
-- Footer
+### 4. Replace Mock Data with Live Queries
 
-## 4. Student dashboard (`/dashboard`)
+- Swap `src/data/mock-courses.ts` consumers to use TanStack Query + the server fns above.
+- Dashboard: `useSuspenseQuery(['courses'])` → renders course library with real progress %.
+- Player: loads course by `courseId`, sidebar accordion built from DB modules/lessons, `<video src={lesson.video_url}>` plays the DB URL. "Mark complete" calls `toggleLessonComplete` → invalidates `['courses']`.
+- Zustand `progress-store` deprecated for completion (server is source of truth); kept only for client-side "last watched" UX hint or removed.
 
-- Top bar: logo, user avatar mock, "Free Plan" crimson-outlined badge
-- Welcome banner: "Welcome back, Alex" + subscription status
-- **Continue Learning** hero card: thumbnail of last in-progress lesson, course/module name, progress bar, "Resume" button → deep-links to `/learn/$courseId` at that lesson
-- Course library grid with tabs: **All / In Progress / Completed** (shadcn `Tabs`)
-- Each course card: thumbnail, title, module count, progress %, status chip
+### 5. Admin Panel (`/_authenticated/_admin/admin`)
 
-## 5. Course player (`/learn/$courseId`)
+Pathless `_admin` layout with `has_role('admin')` gate via `beforeLoad` server-fn check; non-admins → `/dashboard`.
 
-Two-column layout (desktop ≥ lg):
+Tabs:
+- **Courses** — list + create/edit dialog (title, description, thumbnail URL, instructor, sort order).
+- **Modules** — select course → list modules → create/edit (title, sort order).
+- **Lessons** — select module → list lessons → create/edit (title, description, video URL, duration, sort order).
+- **Users** — data table: email, registered date, subscription status dropdown (free/pro/lifetime) calling `updateUserSubscription`.
 
-- **Left 70%**: 16:9 video container (HTML5 `<video>` with mock mp4 / poster), under it: lesson title (h1), module name (muted), description, "Mark complete" button, prev/next controls
-- **Right 30%**: sticky sidebar — course title + overall progress bar, then shadcn `Accordion` of Modules. Each module shows lesson count + duration sum. Each lesson row:
-  - Left: number circle OR `Check` icon (crimson) when completed
-  - Middle: lesson title + duration (e.g. `12:45`)
-  - Active lesson: crimson left border + crimson-tinted background
-- Clicking a lesson swaps the video and updates active state
-- "Mark complete" toggles the checkmark in the sidebar (local state)
+All mutations use `useMutation` → invalidate `['courses']` and `['admin', ...]` so Dashboard + Playlist update immediately.
 
-Mobile: sidebar collapses into a `Sheet` triggered by a "Lessons" button.
-
-## 6. Mock data
-
-`src/data/mock-courses.ts`:
-- 2 courses, each with 3 modules, each module with 3–5 lessons
-- Per lesson: `id, number, title, duration (sec), videoUrl, completed`
-- Per course: `id, title, instructor, thumbnail, modules[]`
-- A `currentUser` mock with `name`, `subscription_status: 'free'`, `lastWatched: { courseId, lessonId }`
-
-State lives in a small Zustand store (or React context) so "mark complete" reflects on both dashboard and player without a backend.
-
-## Deferred to next iteration (called out so nothing is forgotten)
-
-- Enable Lovable Cloud
-- Google sign-in via the Lovable broker + `supabase--configure_social_auth`
-- Tables: `profiles (subscription_status enum: free | 3m | 6m | 1y, expires_at)`, `courses`, `modules`, `lessons`, `lesson_progress`, plus `user_roles` + `has_role` for admin gating
-- Move `/dashboard` and `/learn/*` under `_authenticated/`
-- Admin panel at `/_authenticated/_admin/admin` with CMS forms and user management table
-- Swap mock data for server functions
-
-## Technical notes
-
-- Stack: TanStack Start (already scaffolded), Tailwind v4, shadcn/ui
-- All colors via semantic tokens — no hardcoded hex in components
-- Video player: native `<video>` with custom crimson controls overlay (no extra dep this pass)
-- Icons: `lucide-react` (already available)
-
-Approve and I'll build this pass; then we'll wire Cloud + auth + admin in the next.
+### Technical notes
+- All `*.functions.ts` live in `src/lib/`, never import `client.server` at module scope.
+- Public landing stays SSR-on; auth-protected routes under `_authenticated/`.
+- Video URLs are plain strings (any CDN/mp4/HLS URL); no upload UI in this pass.
+- Thai UI strings preserved across new screens (auth, admin).
