@@ -84,6 +84,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "คอร์สสั้นเข้มข้นสำหรับวิศวกรที่สร้างระบบ AI" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Forge — แพลตฟอร์มเรียนรู้ขับเคลื่อนด้วย AI" },
+      { name: "twitter:description", content: "คอร์สสั้นเข้มข้นสำหรับวิศวกรที่สร้างระบบ AI" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e9055a94-df86-4b19-82fc-d95529727d5c/id-preview-e7fc42d8--e459baaa-4e6a-4152-9144-f1ad98cf606a.lovable.app-1782050173520.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e9055a94-df86-4b19-82fc-d95529727d5c/id-preview-e7fc42d8--e459baaa-4e6a-4152-9144-f1ad98cf606a.lovable.app-1782050173520.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
