@@ -1,0 +1,100 @@
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
+import { Zap } from "lucide-react";
+import { lovable } from "@/integrations/lovable";
+import { supabase } from "@/integrations/supabase/client";
+
+export const Route = createFileRoute("/auth")({
+  head: () => ({
+    meta: [
+      { title: "เข้าสู่ระบบ · Forge" },
+      { name: "description", content: "เข้าสู่ระบบด้วย Google เพื่อเริ่มเรียน" },
+    ],
+  }),
+  component: AuthPage,
+});
+
+function AuthPage() {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) navigate({ to: "/dashboard", replace: true });
+    });
+  }, [navigate]);
+
+  const onGoogle = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin + "/dashboard",
+    });
+    if (result.error) {
+      setError(
+        typeof result.error === "object" && result.error && "message" in result.error
+          ? String((result.error as any).message)
+          : "เข้าสู่ระบบไม่สำเร็จ",
+      );
+      setLoading(false);
+      return;
+    }
+    if (result.redirected) return;
+    navigate({ to: "/dashboard", replace: true });
+  };
+
+  return (
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-6">
+      <div className="absolute inset-0 grid-bg opacity-50" />
+      <div className="absolute left-1/2 top-1/2 h-[500px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/20 blur-[120px]" />
+
+      <div className="relative w-full max-w-md">
+        <Link to="/" className="mb-8 flex items-center justify-center gap-2">
+          <div className="flex h-10 w-10 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent shadow-glow">
+            <Zap className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
+          </div>
+          <div className="flex flex-col leading-none">
+            <span className="font-display text-xl font-bold tracking-tight">FORGE</span>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              AI Academy
+            </span>
+          </div>
+        </Link>
+
+        <div className="rounded-2xl border border-border bg-card/80 p-8 shadow-elevated backdrop-blur-xl">
+          <div className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
+            เข้าสู่ระบบ
+          </div>
+          <h1 className="font-display text-2xl font-bold tracking-tight">
+            พร้อมเริ่มเรียนแล้วหรือยัง?
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            ใช้บัญชี Google ของคุณเพื่อเข้าใช้งานในไม่กี่วินาที
+          </p>
+
+          <button
+            onClick={onGoogle}
+            disabled={loading}
+            className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:translate-y-[-1px] disabled:opacity-60"
+          >
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21.35 11.1h-9.17v2.92h5.27c-.24 1.5-1.74 4.4-5.27 4.4-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.42l2.53-2.43C16.92 3.91 14.81 3 12.18 3 7.13 3 3 7.07 3 12.07s4.13 9.07 9.18 9.07c5.3 0 8.82-3.72 8.82-8.96 0-.6-.07-1.06-.15-1.5z" />
+            </svg>
+            {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบด้วย Google"}
+          </button>
+
+          {error && (
+            <div className="mt-4 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+              {error}
+            </div>
+          )}
+
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            ผู้ใช้คนแรกของระบบจะถูกตั้งเป็นผู้ดูแล (Admin) อัตโนมัติ
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

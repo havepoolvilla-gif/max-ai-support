@@ -1,29 +1,65 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { ArrowRight, PlayCircle, Clock, CheckCircle2, Sparkles } from "lucide-react";
+import { useSuspenseQuery } from "@tanstack/react-query";
+import { ArrowRight, PlayCircle, Clock, CheckCircle2, Sparkles, Settings } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
-import { COURSES, CURRENT_USER, courseStats, findLesson, formatDuration } from "@/data/mock-courses";
-import { useProgress } from "@/lib/progress-store";
+import { getDashboard, type CourseDTO } from "@/lib/courses.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
-export const Route = createFileRoute("/dashboard")({
+export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
       { title: "แดชบอร์ด · Forge" },
       { name: "description", content: "ศูนย์ควบคุมการเรียนรู้ของคุณ" },
     ],
   }),
+  loader: async ({ context }) => {
+    await context.queryClient.ensureQueryData({
+      queryKey: ["dashboard"],
+      queryFn: () => getDashboard(),
+    });
+  },
   component: Dashboard,
 });
 
-function Dashboard() {
-  const completed = useProgress((s) => s.completed);
-  const lastWatched = useProgress((s) => s.lastWatched) ?? CURRENT_USER.lastWatched;
-  const completedSet = useMemo(() => new Set(completed), [completed]);
-  const [tab, setTab] = useState<"all" | "in-progress" | "completed">("all");
+function formatDuration(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
-  const enriched = COURSES.map((c) => {
-    const s = courseStats(c.id, completedSet);
+function findLesson(courses: CourseDTO[], courseId: string, lessonId: string) {
+  const course = courses.find((c) => c.id === courseId);
+  if (!course) return null;
+  for (const m of course.modules) {
+    const l = m.lessons.find((x) => x.id === lessonId);
+    if (l) return { course, module: m, lesson: l };
+  }
+  return null;
+}
+
+function courseStats(course: CourseDTO, completedSet: Set<string>) {
+  let total = 0, completed = 0, totalDuration = 0;
+  for (const m of course.modules) {
+    for (const l of m.lessons) {
+      total++;
+      totalDuration += l.duration;
+      if (completedSet.has(l.id)) completed++;
+    }
+  }
+  return { total, completed, totalDuration };
+}
+
+function Dashboard() {
+  const { data } = useSuspenseQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => getDashboard(),
+  });
+  const [tab, setTab] = useState<"all" | "in-progress" | "completed">("all");
+  const completedSet = useMemo(() => new Set(data.completedLessonIds), [data.completedLessonIds]);
+
+  const enriched = data.courses.map((c) => {
+    const s = courseStats(c, completedSet);
     const pct = s.total === 0 ? 0 : Math.round((s.completed / s.total) * 100);
     const status: "not-started" | "in-progress" | "completed" =
       s.completed === 0 ? "not-started" : s.completed === s.total ? "completed" : "in-progress";
@@ -36,14 +72,17 @@ function Dashboard() {
     return e.status === "completed";
   });
 
-  const resume = lastWatched ? findLesson(lastWatched.courseId, lastWatched.lessonId) : null;
+  const resume = data.lastWatched
+    ? findLesson(data.courses, data.lastWatched.courseId, data.lastWatched.lessonId)
+    : null;
+
+  const firstName = (data.profile.fullName ?? data.profile.email ?? "นักเรียน").split(" ")[0];
 
   return (
     <div className="min-h-screen bg-background">
       <TopNav />
 
       <main className="mx-auto max-w-7xl px-6 py-10">
-        {/* Welcome banner */}
         <div className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-card to-background p-8">
           <div className="absolute inset-0 grid-bg opacity-30" />
           <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-primary/20 blur-3xl" />
@@ -51,28 +90,44 @@ function Dashboard() {
             <div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
                 <Sparkles className="h-3 w-3" />
-                {CURRENT_USER.subscription_status === "free" ? "แพ็กเกจฟรี" : "แพ็กเกจ " + CURRENT_USER.subscription_status.toUpperCase()}
+                {data.profile.subscriptionStatus === "free"
+                  ? "แพ็กเกจฟรี"
+                  : "แพ็กเกจ " + data.profile.subscriptionStatus.toUpperCase()}
               </div>
               <h1 className="font-display text-3xl font-bold tracking-tight md:text-4xl">
-                ยินดีต้อนรับกลับมา, <span className="text-primary">{CURRENT_USER.name.split(" ")[0]}</span>
+                ยินดีต้อนรับกลับมา, <span className="text-primary">{firstName}</span>
               </h1>
               <p className="mt-2 text-sm text-muted-foreground">
-                คุณเรียนจบไปแล้ว {completed.length} บทเรียน รักษาโมเมนตัมเอาไว้
+                คุณเรียนจบไปแล้ว {data.completedLessonIds.length} บทเรียน รักษาโมเมนตัมเอาไว้
               </p>
             </div>
-            <div className="flex gap-8">
-              <Stat label="บทเรียนที่จบ" value={completed.length} />
-              <Stat label="คอร์สที่กำลังเรียน" value={enriched.filter(e => e.status !== "not-started").length} />
+            <div className="flex items-end gap-8">
+              <Stat label="บทเรียนที่จบ" value={data.completedLessonIds.length} />
+              <Stat
+                label="คอร์สที่กำลังเรียน"
+                value={enriched.filter((e) => e.status !== "not-started").length}
+              />
+              {data.profile.isAdmin && (
+                <Link
+                  to="/admin"
+                  className="inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-4 py-2 text-xs font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+                >
+                  <Settings className="h-3.5 w-3.5" /> Admin Panel
+                </Link>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Continue learning */}
         {resume && (
           <section className="mt-10">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-display text-xl font-semibold tracking-tight">เรียนต่อจากที่ค้างไว้</h2>
-              <span className="text-xs uppercase tracking-wider text-muted-foreground">เริ่มจากจุดที่หยุดไว้</span>
+              <h2 className="font-display text-xl font-semibold tracking-tight">
+                เรียนต่อจากที่ค้างไว้
+              </h2>
+              <span className="text-xs uppercase tracking-wider text-muted-foreground">
+                เริ่มจากจุดที่หยุดไว้
+              </span>
             </div>
             <Link
               to="/learn/$courseId"
@@ -89,11 +144,19 @@ function Dashboard() {
                 </div>
               </div>
               <div className="p-6 md:p-8">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">{resume.module.title}</div>
-                <h3 className="mt-2 font-display text-2xl font-bold tracking-tight">{resume.lesson.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground line-clamp-2">{resume.lesson.description}</p>
+                <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
+                  {resume.module.title}
+                </div>
+                <h3 className="mt-2 font-display text-2xl font-bold tracking-tight">
+                  {resume.lesson.title}
+                </h3>
+                <p className="mt-2 text-sm text-muted-foreground line-clamp-2">
+                  {resume.lesson.description}
+                </p>
                 <div className="mt-5 flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {formatDuration(resume.lesson.duration)} นาที</span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" /> {formatDuration(resume.lesson.duration)} นาที
+                  </span>
                   <span>·</span>
                   <span>{resume.course.title}</span>
                 </div>
@@ -105,7 +168,6 @@ function Dashboard() {
           </section>
         )}
 
-        {/* Library */}
         <section className="mt-12">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-display text-xl font-semibold tracking-tight">คลังของคุณ</h2>
@@ -120,7 +182,9 @@ function Dashboard() {
             <TabsContent value={tab} className="mt-6">
               {filtered.length === 0 ? (
                 <div className="rounded-xl border border-border bg-card p-12 text-center text-sm text-muted-foreground">
-                  ยังไม่มีคอร์สในหมวดนี้
+                  {data.courses.length === 0
+                    ? "ยังไม่มีคอร์สในระบบ — ให้ผู้ดูแลสร้างคอร์สแรกในแอดมินแพแนล"
+                    : "ยังไม่มีคอร์สในหมวดนี้"}
                 </div>
               ) : (
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -146,7 +210,11 @@ function Stat({ label, value }: { label: string; value: number }) {
   );
 }
 
-function CourseCard({ item }: { item: ReturnType<typeof courseStats> & { course: typeof COURSES[number]; pct: number; status: string } }) {
+function CourseCard({
+  item,
+}: {
+  item: { course: CourseDTO; total: number; completed: number; pct: number; status: string };
+}) {
   const { course, pct, total, completed, status } = item;
   const firstLesson = course.modules[0]?.lessons[0]?.id;
 
@@ -154,11 +222,15 @@ function CourseCard({ item }: { item: ReturnType<typeof courseStats> & { course:
     <Link
       to="/learn/$courseId"
       params={{ courseId: course.id }}
-      search={firstLesson ? { lesson: firstLesson } : undefined}
+      search={firstLesson ? { lesson: firstLesson } : {}}
       className="group relative flex flex-col overflow-hidden rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-glow"
     >
       <div className="relative aspect-video overflow-hidden bg-gradient-to-br from-accent/40 via-card to-background">
-        <div className="absolute inset-0 grid-bg opacity-30" />
+        {course.thumbnailUrl ? (
+          <img src={course.thumbnailUrl} alt="" className="absolute inset-0 h-full w-full object-cover opacity-80" />
+        ) : (
+          <div className="absolute inset-0 grid-bg opacity-30" />
+        )}
         <div className="absolute right-3 top-3">
           <StatusChip status={status} />
         </div>
@@ -167,12 +239,16 @@ function CourseCard({ item }: { item: ReturnType<typeof courseStats> & { course:
         </div>
       </div>
       <div className="flex flex-1 flex-col p-5">
-        <h3 className="font-display text-lg font-semibold leading-tight tracking-tight">{course.title}</h3>
-        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{course.tagline}</p>
+        <h3 className="font-display text-lg font-semibold leading-tight tracking-tight">
+          {course.title}
+        </h3>
+        <p className="mt-1.5 text-xs text-muted-foreground line-clamp-2">{course.tagline ?? ""}</p>
 
         <div className="mt-auto pt-5">
           <div className="mb-1.5 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>เรียนจบ {completed} / {total} บท</span>
+            <span>
+              เรียนจบ {completed} / {total} บท
+            </span>
             <span className="font-semibold text-foreground tabular-nums">{pct}%</span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-muted">

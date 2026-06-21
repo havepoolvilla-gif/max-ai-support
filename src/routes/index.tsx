@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Brain, CheckCircle2, Cpu, PlayCircle, Zap } from "lucide-react";
+import { ArrowRight, Brain, Cpu, PlayCircle, Zap } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
 
 export const Route = createFileRoute("/")({
@@ -46,19 +46,18 @@ function Landing() {
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
             <Link
-              to="/dashboard"
+              to="/auth"
               className="group inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:translate-y-[-1px] hover:shadow-[0_0_50px_-8px_oklch(0.58_0.22_25/0.7)]"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1h-9.17v2.92h5.27c-.24 1.5-1.74 4.4-5.27 4.4-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.42l2.53-2.43C16.92 3.91 14.81 3 12.18 3 7.13 3 3 7.07 3 12.07s4.13 9.07 9.18 9.07c5.3 0 8.82-3.72 8.82-8.96 0-.6-.07-1.06-.15-1.5z"/></svg>
               เข้าสู่ระบบด้วย Google
             </Link>
             <Link
-              to="/learn/$courseId"
-              params={{ courseId: "ai-engineering" }}
+              to="/auth"
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card/50 px-6 py-3 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-card"
             >
               <PlayCircle className="h-4 w-4" />
-              ทดลองดูบทเรียน
+              เริ่มทดลองใช้
             </Link>
           </div>
 
@@ -135,10 +134,10 @@ function Landing() {
           </h2>
           <p className="mt-4 text-muted-foreground">แพ็กเกจฟรีเข้าถึงโมดูลแรกของทุกคอร์สได้แบบไม่จำกัด</p>
           <Link
-            to="/dashboard"
+            to="/auth"
             className="mt-8 inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:translate-y-[-1px]"
           >
-            เข้าสู่แดชบอร์ด
+            เข้าสู่ระบบเพื่อเริ่ม
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
