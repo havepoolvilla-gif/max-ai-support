@@ -57,6 +57,16 @@ function Player() {
   const active = flatLessons[activeIndex];
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  const videoQuery = useQuery({
+    queryKey: ["lesson-video", active?.lesson.id],
+    queryFn: () => getLessonVideo({ data: { lessonId: active!.lesson.id } }),
+    enabled: !!active?.lesson.id,
+    staleTime: 5 * 60 * 1000,
+  });
+  const videoUrl = videoQuery.data?.videoUrl ?? null;
+  const canWatch = !!videoUrl;
+  const isLocked = !videoQuery.isLoading && !videoUrl;
+
   const toggleMut = useMutation({
     mutationFn: (lessonId: string) => toggleLessonComplete({ data: { lessonId } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["dashboard"] }),
@@ -121,7 +131,7 @@ function Player() {
           <div className="space-y-5">
             <div className="relative overflow-hidden rounded-xl border border-border bg-black shadow-elevated">
               <div className="absolute inset-x-0 top-0 z-10 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-60" />
-              {active.lesson.videoUrl ? (
+              {canWatch ? (
                 <video
                   ref={videoRef}
                   key={active.lesson.id}
@@ -129,11 +139,13 @@ function Player() {
                   className="aspect-video w-full bg-black"
                   poster={`https://placehold.co/1280x720/0a0a0a/dc2626?text=${encodeURIComponent(active.lesson.title)}`}
                 >
-                  <source src={active.lesson.videoUrl} />
+                  <source src={videoUrl ?? undefined} />
                 </video>
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center bg-black text-sm text-muted-foreground">
-                  ยังไม่มีลิงก์วิดีโอสำหรับบทเรียนนี้
+                <div className="flex aspect-video w-full items-center justify-center bg-black px-6 text-center text-sm text-muted-foreground">
+                  {isLocked
+                    ? "บทเรียนนี้สงวนสำหรับสมาชิก Pro หรือ Lifetime — อัปเกรดเพื่อรับชม"
+                    : "กำลังโหลดวิดีโอ..."}
                 </div>
               )}
             </div>
