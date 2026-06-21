@@ -5,10 +5,10 @@ import { TopNav } from "@/components/top-nav";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Forge — Bite-sized courses for AI engineers" },
-      { name: "description", content: "Dark, dense, and engineered for builders. Master AI systems through 10–15 minute lessons." },
-      { property: "og:title", content: "Forge — Bite-sized courses for AI engineers" },
-      { property: "og:description", content: "Master AI systems through 10–15 minute lessons curated by industry operators." },
+      { title: "Forge — คอร์สสั้นสำหรับวิศวกร AI" },
+      { name: "description", content: "เข้มข้น ตรงประเด็น และออกแบบมาเพื่อนักสร้าง เรียนรู้ระบบ AI ผ่านบทเรียน 10–15 นาที" },
+      { property: "og:title", content: "Forge — คอร์สสั้นสำหรับวิศวกร AI" },
+      { property: "og:description", content: "เรียนรู้ระบบ AI ผ่านบทเรียน 10–15 นาที จากผู้ปฏิบัติงานจริงในอุตสาหกรรม" },
     ],
   }),
   component: Landing,
@@ -29,19 +29,19 @@ function Landing() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
             </span>
-            AI-curated learning · Now in beta
+            จัดคอร์สด้วย AI · เปิดให้ทดลองแล้ว
           </div>
 
-          <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight md:text-7xl">
-            Master the systems
+          <h1 className="font-display text-5xl font-bold leading-[1.15] tracking-tight md:text-7xl">
+            เชี่ยวชาญระบบ
             <br />
             <span className="bg-gradient-to-r from-primary via-primary-glow to-primary bg-clip-text text-transparent glow-text">
-              powering modern AI.
+              ที่ขับเคลื่อน AI ยุคใหม่
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
-            Dense, 10–15 minute lessons built by operators who ship. No fluff, no filler — just the
-            highest-signal path from fundamentals to production deployment.
+            บทเรียนเข้มข้น 10–15 นาที สร้างโดยวิศวกรที่ทำงานจริง ไม่มีน้ำท่วมทุ่ง
+            มีแต่เส้นทางที่ตรงที่สุดจากพื้นฐานสู่การ deploy บนโปรดักชัน
           </p>
 
           <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
@@ -50,7 +50,7 @@ function Landing() {
               className="group inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:translate-y-[-1px] hover:shadow-[0_0_50px_-8px_oklch(0.58_0.22_25/0.7)]"
             >
               <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M21.35 11.1h-9.17v2.92h5.27c-.24 1.5-1.74 4.4-5.27 4.4-3.17 0-5.76-2.62-5.76-5.85s2.59-5.85 5.76-5.85c1.81 0 3.02.77 3.71 1.42l2.53-2.43C16.92 3.91 14.81 3 12.18 3 7.13 3 3 7.07 3 12.07s4.13 9.07 9.18 9.07c5.3 0 8.82-3.72 8.82-8.96 0-.6-.07-1.06-.15-1.5z"/></svg>
-              Continue with Google
+              เข้าสู่ระบบด้วย Google
             </Link>
             <Link
               to="/learn/$courseId"
@@ -58,7 +58,7 @@ function Landing() {
               className="inline-flex items-center gap-2 rounded-md border border-border bg-card/50 px-6 py-3 text-sm font-medium text-foreground backdrop-blur transition-colors hover:bg-card"
             >
               <PlayCircle className="h-4 w-4" />
-              Preview a lesson
+              ทดลองดูบทเรียน
             </Link>
           </div>
 
@@ -82,10 +82,10 @@ function Landing() {
                   </div>
                 </div>
                 <div className="border-l border-border bg-sidebar p-4 text-left">
-                  <div className="mb-3 text-[10px] uppercase tracking-wider text-muted-foreground">Module 02 · Transformers</div>
-                  {["Attention, From Scratch", "Multi-Head Attention", "Decoder Stacks", "Fine-tuning (LoRA)"].map((t, i) => (
+                  <div className="mb-3 text-[10px] uppercase tracking-wider text-muted-foreground">โมดูล 02 · Transformer</div>
+                  {["เขียน Attention จากศูนย์", "Multi-Head Attention", "Decoder Stacks", "Fine-tuning (LoRA)"].map((t, i) => (
                     <div key={t} className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-xs ${i === 0 ? "border-l-2 border-primary bg-accent/20 text-foreground" : "text-muted-foreground"}`}>
-                      {i < 0 ? <CheckCircle2 className="h-4 w-4 text-primary" /> : <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px]">{i + 4}</span>}
+                      <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px]">{i + 4}</span>
                       <span className="flex-1 truncate">{t}</span>
                       <span className="tabular-nums">{12 + i}:{(15 + i * 7) % 60}</span>
                     </div>
@@ -101,14 +101,14 @@ function Landing() {
       <section className="border-t border-border bg-card/30">
         <div className="mx-auto max-w-7xl px-6 py-24">
           <div className="mb-16 text-center">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">Built for builders</div>
-            <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">Engineered to make you faster.</h2>
+            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-primary">สร้างสำหรับนักสร้าง</div>
+            <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">ออกแบบมาให้คุณเก่งขึ้นเร็วกว่าเดิม</h2>
           </div>
           <div className="grid gap-6 md:grid-cols-3">
             {[
-              { icon: Zap, title: "Bite-sized lessons", body: "Every video is 10–15 minutes. Learn in the gaps of your day without losing momentum." },
-              { icon: Brain, title: "AI-curated paths", body: "Adaptive recommendations based on what you've completed and where you're stuck." },
-              { icon: Cpu, title: "Production-grade depth", body: "Not theory soup — patterns, tradeoffs, and code from teams shipping at scale." },
+              { icon: Zap, title: "บทเรียนสั้นกระชับ", body: "ทุกวิดีโอยาว 10–15 นาที เรียนได้ในช่วงเวลาว่างโดยไม่เสียจังหวะ" },
+              { icon: Brain, title: "เส้นทางที่ AI ช่วยคัด", body: "แนะนำบทเรียนถัดไปอัตโนมัติตามความก้าวหน้าและจุดที่คุณติด" },
+              { icon: Cpu, title: "ลึกระดับโปรดักชัน", body: "ไม่ใช่ทฤษฎีลอย ๆ แต่เป็นแพตเทิร์น ทางเลือก และโค้ดจากทีมที่ deploy จริง" },
             ].map((f) => (
               <div key={f.title} className="group relative overflow-hidden rounded-xl border border-border bg-card p-6 transition-all hover:border-primary/50 hover:shadow-glow">
                 <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
@@ -131,14 +131,14 @@ function Landing() {
         <div className="absolute left-1/2 top-1/2 h-[400px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/15 blur-[120px]" />
         <div className="relative mx-auto max-w-4xl px-6 py-24 text-center">
           <h2 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
-            Ready to level up?
+            พร้อมจะอัพสกิลแล้วหรือยัง?
           </h2>
-          <p className="mt-4 text-muted-foreground">Free plan includes unlimited access to the first module of every course.</p>
+          <p className="mt-4 text-muted-foreground">แพ็กเกจฟรีเข้าถึงโมดูลแรกของทุกคอร์สได้แบบไม่จำกัด</p>
           <Link
             to="/dashboard"
             className="mt-8 inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-semibold text-primary-foreground shadow-glow transition-all hover:translate-y-[-1px]"
           >
-            Enter the dashboard
+            เข้าสู่แดชบอร์ด
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -146,7 +146,7 @@ function Landing() {
 
       <footer className="border-t border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-muted-foreground">
-          <span>© 2026 Forge Academy. All systems operational.</span>
+          <span>© 2026 Forge Academy · ระบบทั้งหมดทำงานปกติ</span>
           <span>v0.1 · beta</span>
         </div>
       </footer>

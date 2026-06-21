@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { z } from "zod";
 import { ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, ListVideo, Lock, PlayCircle } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
@@ -23,8 +23,8 @@ export const Route = createFileRoute("/learn/$courseId")({
     const course = COURSES.find((c) => c.id === params.courseId);
     return {
       meta: [
-        { title: `${course?.title ?? "Course"} · Forge` },
-        { name: "description", content: course?.tagline ?? "Course player" },
+        { title: `${course?.title ?? "คอร์ส"} · Forge` },
+        { name: "description", content: course?.tagline ?? "หน้าเล่นบทเรียน" },
       ],
     };
   },
@@ -57,7 +57,6 @@ function Player() {
   }, [active?.lesson.id, courseId, setLastWatched, active]);
 
   useEffect(() => {
-    // restart video on lesson change
     videoRef.current?.load();
   }, [active?.lesson.id]);
 
@@ -66,8 +65,8 @@ function Player() {
       <div className="min-h-screen bg-background">
         <TopNav />
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <h1 className="font-display text-2xl font-bold">Course not found</h1>
-          <Link to="/dashboard" className="mt-4 inline-block text-primary">Back to dashboard</Link>
+          <h1 className="font-display text-2xl font-bold">ไม่พบคอร์สนี้</h1>
+          <Link to="/dashboard" className="mt-4 inline-block text-primary">กลับไปแดชบอร์ด</Link>
         </div>
       </div>
     );
@@ -88,7 +87,7 @@ function Player() {
       <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-8">
         {/* breadcrumb */}
         <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
+          <Link to="/dashboard" className="hover:text-foreground transition-colors">แดชบอร์ด</Link>
           <span>/</span>
           <span className="text-foreground">{course.title}</span>
         </div>
@@ -123,16 +122,16 @@ function Player() {
                       : "bg-primary text-primary-foreground hover:shadow-glow"
                   }`}
                 >
-                  {isDone ? <><CheckCircle2 className="h-4 w-4" /> Completed</> : <><Check className="h-4 w-4" /> Mark complete</>}
+                  {isDone ? <><CheckCircle2 className="h-4 w-4" /> เรียนจบแล้ว</> : <><Check className="h-4 w-4" /> ทำเครื่องหมายว่าจบ</>}
                 </button>
               </div>
 
               <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5" /> {formatDuration(active.lesson.duration)} mins
+                  <Clock className="h-3.5 w-3.5" /> {formatDuration(active.lesson.duration)} นาที
                 </span>
                 <span>·</span>
-                <span>Lesson {active.lesson.number} of {flatLessons.length}</span>
+                <span>บทที่ {active.lesson.number} จาก {flatLessons.length}</span>
               </div>
 
               <p className="mt-5 text-sm leading-relaxed text-muted-foreground">{active.lesson.description}</p>
@@ -143,16 +142,16 @@ function Player() {
                   disabled={!prev}
                   className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-card disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  <ArrowLeft className="h-4 w-4" /> Previous
+                  <ArrowLeft className="h-4 w-4" /> บทก่อนหน้า
                 </button>
 
                 {/* Mobile playlist trigger */}
                 <Sheet>
                   <SheetTrigger className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium lg:hidden">
-                    <ListVideo className="h-4 w-4" /> Lessons
+                    <ListVideo className="h-4 w-4" /> รายการบทเรียน
                   </SheetTrigger>
                   <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">
-                    <SheetTitle className="sr-only">Course playlist</SheetTitle>
+                    <SheetTitle className="sr-only">รายการบทเรียนของคอร์ส</SheetTitle>
                     <Playlist course={course} activeId={active.lesson.id} onSelect={(id) => goTo(id)} completedSet={completedSet} pct={pct} stats={stats} />
                   </SheetContent>
                 </Sheet>
@@ -162,7 +161,7 @@ function Player() {
                   disabled={!next}
                   className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Next lesson <ArrowRight className="h-4 w-4" />
+                  บทถัดไป <ArrowRight className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -195,16 +194,15 @@ function Playlist({
   pct: number;
   stats: { total: number; completed: number; totalDuration: number };
 }) {
-  // Find active module so it stays open
   const activeModuleId = course.modules.find((m) => m.lessons.some((l) => l.id === activeId))?.id;
 
   return (
     <div>
       <div className="border-b border-border bg-sidebar p-5">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Course</div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">คอร์ส</div>
         <h2 className="mt-1 font-display text-lg font-bold leading-tight">{course.title}</h2>
         <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{stats.completed} / {stats.total} lessons</span>
+          <span>เรียนจบ {stats.completed} / {stats.total} บท</span>
           <span className="font-semibold text-foreground tabular-nums">{pct}%</span>
         </div>
         <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
@@ -216,7 +214,7 @@ function Playlist({
         {course.modules.map((module, mIdx) => {
           const moduleDuration = module.lessons.reduce((sum, l) => sum + l.duration, 0);
           const moduleDone = module.lessons.every((l) => completedSet.has(l.id));
-          const isLocked = mIdx > 0; // Free plan: only module 1 unlocked (visual cue, still clickable for demo)
+          const isLocked = mIdx > 0;
 
           return (
             <AccordionItem key={module.id} value={module.id} className="border-b border-border/60 last:border-0">
@@ -226,11 +224,11 @@ function Playlist({
                     {moduleDone ? <Check className="h-4 w-4" /> : (mIdx + 1).toString().padStart(2, "0")}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{module.title.replace(/^Module \d+ · /, "")}</div>
+                    <div className="truncate text-sm font-semibold">{module.title.replace(/^โมดูล \d+ · /, "")}</div>
                     <div className="mt-0.5 flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <span>{module.lessons.length} lessons</span>
+                      <span>{module.lessons.length} บท</span>
                       <span>·</span>
-                      <span>{formatDuration(moduleDuration)} min</span>
+                      <span>{formatDuration(moduleDuration)} นาที</span>
                       {isLocked && <><span>·</span><Lock className="h-3 w-3" /></>}
                     </div>
                   </div>

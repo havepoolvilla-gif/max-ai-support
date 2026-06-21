@@ -19,9 +19,9 @@ export function TopNav() {
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">
-          <NavLink to="/" label="Home" active={pathname === "/"} />
-          <NavLink to="/dashboard" label="Dashboard" active={pathname.startsWith("/dashboard")} />
-          <NavLink to="/learn/$courseId" params={{ courseId: "ai-engineering" }} label="Library" active={pathname.startsWith("/learn")} />
+          <NavLink to="/" label="หน้าแรก" active={pathname === "/"} />
+          <NavLink to="/dashboard" label="แดชบอร์ด" active={pathname.startsWith("/dashboard")} />
+          <NavLink to="/learn/$courseId" params={{ courseId: "ai-engineering" }} label="คลังคอร์ส" active={pathname.startsWith("/learn")} />
         </nav>
 
         <div className="flex items-center gap-3">
@@ -30,13 +30,13 @@ export function TopNav() {
               to="/dashboard"
               className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-glow"
             >
-              Sign in
+              เข้าสู่ระบบ
             </Link>
           ) : (
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
-                <div className="text-sm font-medium leading-tight">Alex Reyes</div>
-                <div className="text-[10px] uppercase tracking-wider text-primary">Free Plan</div>
+                <div className="text-sm font-medium leading-tight">อเล็กซ์ เรเยส</div>
+                <div className="text-[10px] uppercase tracking-wider text-primary">แพ็กเกจฟรี</div>
               </div>
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-sm font-semibold text-primary-foreground ring-2 ring-primary/30">
                 AR
