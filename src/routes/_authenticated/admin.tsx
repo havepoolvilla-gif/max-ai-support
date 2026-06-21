@@ -1,9 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus, Pencil, Trash2, X } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
 import { getDashboard, type CourseDTO, type ModuleDTO, type LessonDTO } from "@/lib/courses.functions";
+import { getLessonVideo } from "@/lib/lesson-video.functions";
 import {
   upsertCourse, deleteCourse,
   upsertModule, deleteModule,
@@ -161,7 +162,7 @@ function ContentManager() {
                           [{les.sortOrder}] {les.title}
                         </div>
                         <div className="truncate text-[10px] text-muted-foreground">
-                          {les.videoUrl || "— ยังไม่มี URL วิดีโอ —"} · {les.duration}s
+                          {les.duration}s · วิดีโอจัดการในแบบฟอร์มแก้ไข
                         </div>
                       </div>
                       <div className="flex items-center gap-1">
@@ -365,9 +366,18 @@ function LessonDialog({
 }: { moduleId: string; initial?: LessonDTO; onClose: () => void; onSaved: () => void }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [videoUrl, setVideoUrl] = useState(initial?.videoUrl ?? "");
+  const [videoUrl, setVideoUrl] = useState("");
   const [duration, setDuration] = useState(initial?.duration ?? 0);
   const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? 0);
+
+  useEffect(() => {
+    if (initial?.id) {
+      getLessonVideo({ data: { lessonId: initial.id } })
+        .then((r) => setVideoUrl(r.videoUrl ?? ""))
+        .catch(() => setVideoUrl(""));
+    }
+  }, [initial?.id]);
+
 
   const save = useMutation({
     mutationFn: () =>

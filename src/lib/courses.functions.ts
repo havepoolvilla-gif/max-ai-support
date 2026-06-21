@@ -61,7 +61,10 @@ export const getDashboard = createServerFn({ method: "GET" })
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("courses").select("*").order("sort_order"),
       supabase.from("modules").select("*").order("sort_order"),
-      supabase.from("lessons").select("*").order("sort_order"),
+      supabase
+        .from("lessons")
+        .select("id, module_id, title, description, duration_seconds, sort_order, created_at")
+        .order("sort_order"),
       supabase.from("lesson_progress").select("lesson_id").eq("user_id", userId),
       supabase
         .from("user_last_watched")
@@ -80,7 +83,7 @@ export const getDashboard = createServerFn({ method: "GET" })
         id: l.id,
         title: l.title,
         description: l.description,
-        videoUrl: l.video_url,
+        videoUrl: null,
         duration: l.duration_seconds,
         sortOrder: l.sort_order,
       });
