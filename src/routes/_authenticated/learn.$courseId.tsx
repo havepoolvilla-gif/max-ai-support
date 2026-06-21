@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { z } from "zod";
-import { useSuspenseQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSuspenseQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, ListVideo, PlayCircle,
 } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
 import { getDashboard, type CourseDTO, type LessonDTO } from "@/lib/courses.functions";
+import { getLessonVideo } from "@/lib/lesson-video.functions";
 import { toggleLessonComplete, setLastWatched } from "@/lib/progress.functions";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
