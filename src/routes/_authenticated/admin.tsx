@@ -501,3 +501,233 @@ function UsersManager() {
     </div>
   );
 }
+
+// ---------- STUDENTS MANAGER (create accounts + per-course access grants) ----------
+
+function generatePassword(length = 8) {
+  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lower = "abcdefghijkmnpqrstuvwxyz";
+  const digits = "23456789";
+  const symbols = "!@#$%&*";
+  const all = upper + lower + digits + symbols;
+  const cryptoObj =
+    typeof globalThis !== "undefined" && (globalThis as any).crypto
+      ? (globalThis as any).crypto
+      : null;
+  const rand = (n: number) => {
+    if (cryptoObj?.getRandomValues) {
+      const buf = new Uint32Array(1);
+      cryptoObj.getRandomValues(buf);
+      return buf[0] % n;
+    }
+    return Math.floor(Math.random() * n);
+  };
+  // Guarantee at least one of each character class
+  const required = [
+    upper[rand(upper.length)],
+    lower[rand(lower.length)],
+    digits[rand(digits.length)],
+    symbols[rand(symbols.length)],
+  ];
+  const rest = Array.from({ length: Math.max(0, length - required.length) }, () =>
+    all[rand(all.length)],
+  );
+  const chars = [...required, ...rest];
+  for (let i = chars.length - 1; i > 0; i--) {
+    const j = rand(i + 1);
+    [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  return chars.join("");
+}
+
+function StudentsManager() {
+  const qc = useQueryClient();
+  const { data: dash } = useSuspenseQuery({
+    queryKey: ["dashboard"],
+    queryFn: () => getDashboard(),
+  });
+  const { data: users } = useSuspenseQuery({
+    queryKey: ["admin", "users"],
+    queryFn: () => listUsers(),
+  });
+
+  const courses = dash.courses;
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "users"] });
+
+  // Create account form state
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  const createMut = useMutation({
+    mutationFn: () => createStudent({ data: { email, password, full_name: fullName } }),
+    onSuccess: (res) => {
+      setCreateMsg({
+        ok: true,
+        text: `สร้างบัญชีสำเร็จ — อีเมล: ${res.email} · รหัสผ่าน: ${password} (กรุณาคัดลอกส่งให้นักเรียน)`,
+      });
+      setFullName("");
+      setEmail("");
+      setPassword("");
+      invalidate();
+    },
+    onError: (err: any) => {
+      setCreateMsg({ ok: false, text: err?.message ?? "สร้างบัญชีไม่สำเร็จ" });
+    },
+  });
+
+  const grantMut = useMutation({
+    mutationFn: (v: { userId: string; courseId: string }) => grantCourseAccess({ data: v }),
+    onSuccess: invalidate,
+  });
+  const revokeMut = useMutation({
+    mutationFn: (v: { userId: string; courseId: string }) => revokeCourseAccess({ data: v }),
+    onSuccess: invalidate,
+  });
+
+  return (
+    <div className="space-y-6">
+      {/* Create account card */}
+      <section className="rounded-xl border border-border bg-card p-6 shadow-card">
+        <h3 className="font-display text-base font-bold">สร้างบัญชีนักเรียนใหม่</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          กรอกข้อมูลและกดสร้าง — ระบบจะออกบัญชีให้ทันทีและพร้อมใช้งาน
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Field label="ชื่อ-นามสกุล">
+            <input
+              className={inputCls}
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              placeholder="สมชาย ใจดี"
+            />
+          </Field>
+          <Field label="Email (Gmail นักเรียน)">
+            <input
+              type="email"
+              className={inputCls}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="student@gmail.com"
+            />
+          </Field>
+          <Field label="รหัสผ่าน">
+            <div className="flex gap-2">
+              <input
+                className={inputCls}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="อย่างน้อย 6 ตัวอักษร"
+              />
+              <button
+                type="button"
+                onClick={() => setPassword(generatePassword(8))}
+                className="shrink-0 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/15"
+              >
+                สุ่มรหัสผ่าน
+              </button>
+            </div>
+          </Field>
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <div className="flex-1">
+            {createMsg && (
+              <div
+                className={`rounded-md border px-3 py-2 text-xs ${
+                  createMsg.ok
+                    ? "border-primary/30 bg-primary/10 text-foreground"
+                    : "border-destructive/30 bg-destructive/10 text-destructive"
+                }`}
+              >
+                {createMsg.text}
+              </div>
+            )}
+          </div>
+          <button
+            disabled={!fullName || !email || password.length < 6 || createMut.isPending}
+            onClick={() => {
+              setCreateMsg(null);
+              createMut.mutate();
+            }}
+            className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
+          >
+            {createMut.isPending ? "กำลังสร้าง..." : "สร้างบัญชี"}
+          </button>
+        </div>
+      </section>
+
+      {/* Students list with per-course access toggles */}
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+        <div className="border-b border-border p-5">
+          <h3 className="font-display text-base font-bold">รายชื่อนักเรียน · สิทธิ์การเข้าถึงคอร์ส</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            ติ๊กถูกหน้าคอร์สเพื่ออนุญาตให้นักเรียนเข้าถึง — เอาออกเพื่อยกเลิกสิทธิ์
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-sidebar text-[10px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 text-left">นักเรียน</th>
+                {courses.map((c) => (
+                  <th key={c.id} className="px-3 py-3 text-center">
+                    <div className="font-display text-xs font-semibold normal-case text-foreground">
+                      {c.title}
+                    </div>
+                    {c.courseTier && (
+                      <div className="mt-0.5 text-[9px] text-muted-foreground">
+                        {c.courseTier}
+                      </div>
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {users.length === 0 && (
+                <tr>
+                  <td
+                    colSpan={courses.length + 1}
+                    className="px-4 py-8 text-center text-muted-foreground"
+                  >
+                    ยังไม่มีนักเรียน
+                  </td>
+                </tr>
+              )}
+              {users.map((u: any) => (
+                <tr key={u.id}>
+                  <td className="px-4 py-3">
+                    <div className="font-medium">{u.full_name ?? "-"}</div>
+                    <div className="font-mono text-[11px] text-muted-foreground">
+                      {u.email ?? "-"}
+                    </div>
+                  </td>
+                  {courses.map((c) => {
+                    const granted = (u.accessCourseIds as string[] | undefined)?.includes(c.id);
+                    return (
+                      <td key={c.id} className="px-3 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={!!granted}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              grantMut.mutate({ userId: u.id, courseId: c.id });
+                            } else {
+                              revokeMut.mutate({ userId: u.id, courseId: c.id });
+                            }
+                          }}
+                          className="h-4 w-4 cursor-pointer accent-primary"
+                        />
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
