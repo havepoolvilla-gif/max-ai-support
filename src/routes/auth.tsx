@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "เข้าสู่ระบบ · Forge" },
+      { title: "เข้าสู่ระบบ · Skill Max" },
       { name: "description", content: "เข้าสู่ระบบด้วย Google เพื่อเริ่มเรียน" },
     ],
   }),
