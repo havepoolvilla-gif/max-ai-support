@@ -23,6 +23,11 @@ export const upsertCourse = createServerFn({ method: "POST" })
         instructor: z.string().nullable().optional(),
         thumbnail_url: z.string().nullable().optional(),
         sort_order: z.number().int().default(0),
+        course_tier: z.string().nullable().optional(),
+        price: z.number().int().min(0).default(0),
+        preview_video_url: z.string().nullable().optional(),
+        purchase_url: z.string().nullable().optional(),
+        purchase_info: z.string().nullable().optional(),
       })
       .parse(d),
   )
