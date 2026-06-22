@@ -157,7 +157,7 @@
 @utility shadow-glow {
   box-shadow: var(--shadow-elevated);
 }
-@utility glow-text { /* no glow in light mode */ }
+@utility glow-text { color: inherit; }
 @utility grid-bg {
   background-image:
     linear-gradient(oklch(0.205 0.04 260 / 0.04) 1px, transparent 1px),
