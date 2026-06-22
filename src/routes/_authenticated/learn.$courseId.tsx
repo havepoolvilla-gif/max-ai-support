@@ -1,17 +1,14 @@
-import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef } from "react";
 import { z } from "zod";
 import { useSuspenseQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, ListVideo, PlayCircle,
+  ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, ListVideo, PlayCircle, Lock,
 } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
 import { getDashboard, type CourseDTO, type LessonDTO } from "@/lib/courses.functions";
 import { getLessonVideo } from "@/lib/lesson-video.functions";
 import { toggleLessonComplete, setLastWatched } from "@/lib/progress.functions";
-import {
-  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
 const searchSchema = z.object({ lesson: z.string().optional() });
@@ -93,8 +90,8 @@ function Player() {
       <div className="min-h-screen bg-background">
         <TopNav />
         <div className="mx-auto max-w-3xl px-6 py-20 text-center">
-          <h1 className="font-display text-2xl font-bold">ไม่พบคอร์สนี้</h1>
-          <Link to="/dashboard" className="mt-4 inline-block text-primary">
+          <h1 className="font-display text-2xl font-semibold">ไม่พบคอร์สนี้</h1>
+          <Link to="/dashboard" className="mt-4 inline-block text-primary underline">
             กลับไปแดชบอร์ด
           </Link>
         </div>
@@ -104,8 +101,6 @@ function Player() {
 
   const total = flatLessons.length;
   const completedCount = flatLessons.filter((x) => completedSet.has(x.lesson.id)).length;
-  const totalDuration = flatLessons.reduce((sum, x) => sum + x.lesson.duration, 0);
-  const stats = { total, completed: completedCount, totalDuration };
   const pct = total === 0 ? 0 : Math.round((completedCount / total) * 100);
 
   const goTo = (lessonId: string) =>
@@ -118,53 +113,80 @@ function Player() {
     <div className="min-h-screen bg-background">
       <TopNav />
 
-      <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8 lg:py-8">
-        <div className="mb-4 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link to="/dashboard" className="hover:text-foreground transition-colors">
-            แดชบอร์ด
-          </Link>
-          <span>/</span>
-          <span className="text-foreground">{course.title}</span>
+      <div className="mx-auto max-w-[1500px] px-4 py-8 lg:px-8">
+        {/* Breadcrumb + lesson header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Link to="/dashboard" className="hover:text-foreground transition-colors">
+              ห้องเรียนของฉัน
+            </Link>
+            <span>/</span>
+            <span>{course.title}</span>
+            <span>/</span>
+            <span className="text-foreground">{active.moduleTitle}</span>
+          </div>
+          <div className="mt-3">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+              {active.moduleTitle}
+            </div>
+            <h1 className="mt-1 font-display text-2xl font-semibold leading-tight tracking-tight text-foreground md:text-3xl">
+              บทที่ {activeIndex + 1}: {active.lesson.title}
+            </h1>
+            <p className="mt-1.5 text-sm text-muted-foreground">
+              ดูวิดีโอบทเรียนและทำเครื่องหมายเมื่อเรียนจบเพื่อบันทึกความก้าวหน้า
+            </p>
+          </div>
         </div>
 
         <div className="grid gap-6 lg:grid-cols-[7fr_3fr]">
+          {/* LEFT 70% */}
           <div className="space-y-5">
-            <div className="relative overflow-hidden rounded-xl border border-border bg-black shadow-elevated">
-              <div className="absolute inset-x-0 top-0 z-10 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-60" />
+            {/* Video player */}
+            <div className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
               {canWatch ? (
                 <video
                   ref={videoRef}
                   key={active.lesson.id}
                   controls
                   className="aspect-video w-full bg-black"
-                  poster={`https://placehold.co/1280x720/0a0a0a/dc2626?text=${encodeURIComponent(active.lesson.title)}`}
+                  poster={`https://placehold.co/1280x720/F8F9FA/0F172A?text=${encodeURIComponent(active.lesson.title)}`}
                 >
                   <source src={videoUrl ?? undefined} />
                 </video>
               ) : (
-                <div className="flex aspect-video w-full items-center justify-center bg-black px-6 text-center text-sm text-muted-foreground">
-                  {isLocked
-                    ? "บทเรียนนี้สงวนสำหรับสมาชิก Pro หรือ Lifetime — อัปเกรดเพื่อรับชม"
-                    : "กำลังโหลดวิดีโอ..."}
+                <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 bg-secondary px-6 text-center">
+                  {isLocked ? (
+                    <>
+                      <Lock className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        บทเรียนนี้สงวนสำหรับสมาชิก Pro หรือ Lifetime — อัปเกรดเพื่อรับชม
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">กำลังโหลดวิดีโอ...</p>
+                  )}
                 </div>
               )}
             </div>
 
-            <div className="rounded-xl border border-border bg-card p-6">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">
-                {active.moduleTitle}
-              </div>
-              <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-                <h1 className="font-display text-2xl font-bold leading-tight tracking-tight md:text-3xl">
-                  {active.lesson.title}
-                </h1>
+            {/* Tasks for this lesson */}
+            <section className="rounded-xl border border-border bg-card p-6 shadow-card">
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-display text-base font-semibold tracking-tight text-foreground">
+                    สิ่งที่ต้องทำในบทนี้
+                  </h2>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    ทำตามขั้นตอนด้านล่างเพื่อเก็บผลการเรียน
+                  </p>
+                </div>
                 <button
                   onClick={() => toggleMut.mutate(active.lesson.id)}
                   disabled={toggleMut.isPending}
-                  className={`inline-flex items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-all ${
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
                     isDone
-                      ? "border border-primary/40 bg-primary/10 text-primary"
-                      : "bg-primary text-primary-foreground hover:shadow-glow"
+                      ? "border border-border bg-secondary text-foreground"
+                      : "bg-primary text-primary-foreground hover:bg-primary-glow"
                   }`}
                 >
                   {isDone ? (
@@ -179,7 +201,33 @@ function Player() {
                 </button>
               </div>
 
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+              <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
+                {active.lesson.description ||
+                  "อ่านคำอธิบายบทเรียน ดูวิดีโอจนจบ และทดลองปฏิบัติตามขั้นตอนที่แสดงในตัวอย่าง"}
+              </p>
+
+              <ul className="mt-5 space-y-2.5 text-sm text-foreground">
+                <li className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-semibold text-muted-foreground">
+                    1
+                  </span>
+                  ดูวิดีโอบทเรียนให้จบ
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-semibold text-muted-foreground">
+                    2
+                  </span>
+                  จดบันทึกประเด็นสำคัญที่ต้องนำไปใช้งานจริง
+                </li>
+                <li className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-border text-[11px] font-semibold text-muted-foreground">
+                    3
+                  </span>
+                  กดปุ่ม "ทำเครื่องหมายว่าจบ" เพื่อบันทึกความก้าวหน้า
+                </li>
+              </ul>
+
+              <div className="mt-6 flex items-center gap-4 border-t border-border pt-5 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="h-3.5 w-3.5" /> {formatDuration(active.lesson.duration)} นาที
                 </span>
@@ -188,57 +236,55 @@ function Player() {
                   บทที่ {activeIndex + 1} จาก {flatLessons.length}
                 </span>
               </div>
+            </section>
 
-              <p className="mt-5 text-sm leading-relaxed text-muted-foreground">
-                {active.lesson.description}
-              </p>
+            {/* Prev/Next */}
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={() => prev && goTo(prev.lesson.id)}
+                disabled={!prev}
+                className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <ArrowLeft className="h-4 w-4" /> บทก่อนหน้า
+              </button>
 
-              <div className="mt-6 flex items-center justify-between border-t border-border pt-5">
-                <button
-                  onClick={() => prev && goTo(prev.lesson.id)}
-                  disabled={!prev}
-                  className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-card disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  <ArrowLeft className="h-4 w-4" /> บทก่อนหน้า
-                </button>
+              <Sheet>
+                <SheetTrigger className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium lg:hidden">
+                  <ListVideo className="h-4 w-4" /> รายการบทเรียน
+                </SheetTrigger>
+                <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">
+                  <SheetTitle className="sr-only">รายการบทเรียน</SheetTitle>
+                  <Playlist
+                    course={course}
+                    activeId={active.lesson.id}
+                    onSelect={(id) => goTo(id)}
+                    completedSet={completedSet}
+                    pct={pct}
+                    stats={{ total, completed: completedCount }}
+                  />
+                </SheetContent>
+              </Sheet>
 
-                <Sheet>
-                  <SheetTrigger className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-4 py-2 text-sm font-medium lg:hidden">
-                    <ListVideo className="h-4 w-4" /> รายการบทเรียน
-                  </SheetTrigger>
-                  <SheetContent side="right" className="w-full overflow-y-auto p-0 sm:max-w-md">
-                    <SheetTitle className="sr-only">รายการบทเรียน</SheetTitle>
-                    <Playlist
-                      course={course}
-                      activeId={active.lesson.id}
-                      onSelect={(id) => goTo(id)}
-                      completedSet={completedSet}
-                      pct={pct}
-                      stats={stats}
-                    />
-                  </SheetContent>
-                </Sheet>
-
-                <button
-                  onClick={() => next && goTo(next.lesson.id)}
-                  disabled={!next}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-all hover:shadow-glow disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  บทถัดไป <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
+              <button
+                onClick={() => next && goTo(next.lesson.id)}
+                disabled={!next}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-glow disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                บทถัดไป <ArrowRight className="h-4 w-4" />
+              </button>
             </div>
           </div>
 
+          {/* RIGHT 30% — Playlist */}
           <aside className="hidden lg:block">
-            <div className="sticky top-20 rounded-xl border border-border bg-card overflow-hidden">
+            <div className="sticky top-20 space-y-3">
               <Playlist
                 course={course}
                 activeId={active.lesson.id}
                 onSelect={(id) => goTo(id)}
                 completedSet={completedSet}
                 pct={pct}
-                stats={stats}
+                stats={{ total, completed: completedCount }}
               />
             </div>
           </aside>
@@ -258,94 +304,61 @@ function Playlist({
   pct: number;
   stats: { total: number; completed: number };
 }) {
-  const activeModuleId = course.modules.find((m) =>
-    m.lessons.some((l) => l.id === activeId),
-  )?.id;
+  // Flatten lessons into a single chronological list
+  const items = course.modules.flatMap((m, mIdx) =>
+    m.lessons.map((l, lIdx) => ({
+      lesson: l,
+      moduleTitle: m.title,
+      number: mIdx * 100 + lIdx + 1,
+      globalIdx: 0, // filled below
+    })),
+  );
+  items.forEach((it, i) => (it.globalIdx = i + 1));
 
   return (
-    <div>
-      <div className="border-b border-border bg-sidebar p-5">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          คอร์ส
+    <div className="space-y-3">
+      {/* Progress header card */}
+      <div className="rounded-xl border border-border bg-card p-5 shadow-card">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          ความก้าวหน้าของคอร์ส
         </div>
-        <h2 className="mt-1 font-display text-lg font-bold leading-tight">{course.title}</h2>
-        <div className="mt-4 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>
-            เรียนจบ {stats.completed} / {stats.total} บท
+        <div className="mt-3 flex items-center justify-between text-sm">
+          <span className="font-medium text-foreground">
+            {stats.completed} / {stats.total} บท
           </span>
-          <span className="font-semibold text-foreground tabular-nums">{pct}%</span>
+          <span className="font-semibold tabular-nums text-foreground">{pct}%</span>
         </div>
-        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-secondary">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-primary to-primary-glow transition-all"
+            className="h-full rounded-full bg-primary transition-all"
             style={{ width: `${pct}%` }}
           />
         </div>
       </div>
 
-      <Accordion
-        type="multiple"
-        defaultValue={activeModuleId ? [activeModuleId] : []}
-        className="p-2"
-      >
-        {course.modules.map((module, mIdx) => {
-          const moduleDuration = module.lessons.reduce((sum, l) => sum + l.duration, 0);
-          const moduleDone =
-            module.lessons.length > 0 && module.lessons.every((l) => completedSet.has(l.id));
-
-          return (
-            <AccordionItem
-              key={module.id}
-              value={module.id}
-              className="border-b border-border/60 last:border-0"
-            >
-              <AccordionTrigger className="px-3 py-3 hover:no-underline">
-                <div className="flex w-full items-center gap-3 text-left">
-                  <div
-                    className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-bold ${
-                      moduleDone
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground"
-                    }`}
-                  >
-                    {moduleDone ? <Check className="h-4 w-4" /> : (mIdx + 1).toString().padStart(2, "0")}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{module.title}</div>
-                    <div className="mt-0.5 flex items-center gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <span>{module.lessons.length} บท</span>
-                      <span>·</span>
-                      <span>{formatDuration(moduleDuration)} นาที</span>
-                    </div>
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-2">
-                <ul className="space-y-0.5 pl-2">
-                  {module.lessons.map((lesson, idx) => (
-                    <LessonRow
-                      key={lesson.id}
-                      lesson={lesson}
-                      number={idx + 1}
-                      active={lesson.id === activeId}
-                      done={completedSet.has(lesson.id)}
-                      onSelect={() => onSelect(lesson.id)}
-                    />
-                  ))}
-                </ul>
-              </AccordionContent>
-            </AccordionItem>
-          );
-        })}
-      </Accordion>
+      {/* Lesson list — separate white rectangular cards */}
+      <ul className="space-y-2">
+        {items.map((it) => (
+          <LessonCardRow
+            key={it.lesson.id}
+            lesson={it.lesson}
+            moduleTitle={it.moduleTitle}
+            number={it.globalIdx}
+            active={it.lesson.id === activeId}
+            done={completedSet.has(it.lesson.id)}
+            onSelect={() => onSelect(it.lesson.id)}
+          />
+        ))}
+      </ul>
     </div>
   );
 }
 
-function LessonRow({
-  lesson, number, active, done, onSelect,
+function LessonCardRow({
+  lesson, moduleTitle, number, active, done, onSelect,
 }: {
   lesson: LessonDTO;
+  moduleTitle: string;
   number: number;
   active: boolean;
   done: boolean;
@@ -355,27 +368,35 @@ function LessonRow({
     <li>
       <button
         onClick={onSelect}
-        className={`group flex w-full items-center gap-3 rounded-md border-l-2 px-3 py-2.5 text-left transition-all ${
+        className={`group flex w-full items-start gap-3 rounded-lg border bg-card p-3.5 text-left transition-all ${
           active
-            ? "border-primary bg-accent/30 text-foreground shadow-[inset_0_0_20px_oklch(0.58_0.22_25/0.08)]"
-            : "border-transparent text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            ? "border-primary shadow-card-hover ring-1 ring-primary/15"
+            : "border-border shadow-card hover:border-foreground/20 hover:shadow-card-hover"
         }`}
       >
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center">
+        <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[11px] font-semibold">
           {done ? (
             <CheckCircle2 className="h-5 w-5 text-primary" />
           ) : active ? (
             <PlayCircle className="h-5 w-5 text-primary" />
           ) : (
-            <span className="flex h-5 w-5 items-center justify-center rounded-full border border-border text-[10px] font-medium tabular-nums">
+            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-border text-muted-foreground tabular-nums">
               {number}
             </span>
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <div className={`truncate text-sm ${active ? "font-semibold" : "font-medium"}`}>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+            บทที่ {number}
+          </div>
+          <div
+            className={`mt-0.5 truncate text-sm ${
+              active ? "font-semibold text-foreground" : "font-medium text-foreground"
+            }`}
+          >
             {lesson.title}
           </div>
+          <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{moduleTitle}</div>
         </div>
         <div className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
           {formatDuration(lesson.duration)}
