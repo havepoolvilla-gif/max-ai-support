@@ -38,18 +38,21 @@ export function TopNav() {
     <header className="sticky top-0 z-40 w-full border-b border-border bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold">
-            F
-          </div>
+          <img
+            src={logoAsset.url}
+            alt="Skill Max"
+            className="h-10 w-10 object-contain"
+          />
           <div className="flex flex-col leading-none">
             <span className="font-display text-base font-semibold tracking-tight text-foreground">
-              Forge
+              Skill Max
             </span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               AI Academy
             </span>
           </div>
         </Link>
+
 
         <div className="flex items-center gap-3">
           {onLanding && !user ? (
