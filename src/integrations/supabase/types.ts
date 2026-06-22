@@ -14,32 +14,76 @@ export type Database = {
   }
   public: {
     Tables: {
+      course_access: {
+        Row: {
+          course_id: string
+          granted_at: string
+          granted_by: string | null
+          user_id: string
+        }
+        Insert: {
+          course_id: string
+          granted_at?: string
+          granted_by?: string | null
+          user_id: string
+        }
+        Update: {
+          course_id?: string
+          granted_at?: string
+          granted_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "course_access_course_id_fkey"
+            columns: ["course_id"]
+            isOneToOne: false
+            referencedRelation: "courses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       courses: {
         Row: {
+          course_tier: string | null
           created_at: string
           description: string | null
           id: string
           instructor: string | null
+          preview_video_url: string | null
+          price: number
+          purchase_info: string | null
+          purchase_url: string | null
           sort_order: number
           tagline: string | null
           thumbnail_url: string | null
           title: string
         }
         Insert: {
+          course_tier?: string | null
           created_at?: string
           description?: string | null
           id?: string
           instructor?: string | null
+          preview_video_url?: string | null
+          price?: number
+          purchase_info?: string | null
+          purchase_url?: string | null
           sort_order?: number
           tagline?: string | null
           thumbnail_url?: string | null
           title: string
         }
         Update: {
+          course_tier?: string | null
           created_at?: string
           description?: string | null
           id?: string
           instructor?: string | null
+          preview_video_url?: string | null
+          price?: number
+          purchase_info?: string | null
+          purchase_url?: string | null
           sort_order?: number
           tagline?: string | null
           thumbnail_url?: string | null

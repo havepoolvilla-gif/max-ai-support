@@ -25,6 +25,12 @@ export type CourseDTO = {
   instructor: string | null;
   thumbnailUrl: string | null;
   sortOrder: number;
+  courseTier: string | null;
+  price: number;
+  previewVideoUrl: string | null;
+  purchaseUrl: string | null;
+  purchaseInfo: string | null;
+  hasAccess: boolean;
   modules: ModuleDTO[];
 };
 
@@ -57,6 +63,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       { data: progress },
       { data: lastWatched },
       { data: roles },
+      { data: access },
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("courses").select("*").order("sort_order"),
@@ -72,9 +79,11 @@ export const getDashboard = createServerFn({ method: "GET" })
         .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.from("course_access").select("course_id").eq("user_id", userId),
     ]);
 
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    const accessSet = new Set((access ?? []).map((a: any) => a.course_id));
 
     const lessonsByModule = new Map<string, LessonDTO[]>();
     for (const l of lessons ?? []) {
@@ -102,7 +111,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       modulesByCourse.set(m.course_id, arr);
     }
 
-    const courseDtos: CourseDTO[] = (courses ?? []).map((c) => ({
+    const courseDtos: CourseDTO[] = (courses ?? []).map((c: any) => ({
       id: c.id,
       title: c.title,
       tagline: c.tagline,
@@ -110,6 +119,12 @@ export const getDashboard = createServerFn({ method: "GET" })
       instructor: c.instructor,
       thumbnailUrl: c.thumbnail_url,
       sortOrder: c.sort_order,
+      courseTier: c.course_tier ?? null,
+      price: c.price ?? 0,
+      previewVideoUrl: c.preview_video_url ?? null,
+      purchaseUrl: c.purchase_url ?? null,
+      purchaseInfo: c.purchase_info ?? null,
+      hasAccess: isAdmin || accessSet.has(c.id),
       modules: modulesByCourse.get(c.id) ?? [],
     }));
 

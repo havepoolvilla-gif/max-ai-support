@@ -159,8 +159,14 @@ function Player() {
                     <>
                       <Lock className="h-8 w-8 text-muted-foreground" />
                       <p className="text-sm text-muted-foreground">
-                        บทเรียนนี้สงวนสำหรับสมาชิก Pro หรือ Lifetime — อัปเกรดเพื่อรับชม
+                        คุณยังไม่ได้รับสิทธิ์เข้าถึงคอร์สนี้ — ติดต่อผู้ดูแลเพื่อสมัครเรียน
                       </p>
+                      <Link
+                        to="/dashboard"
+                        className="mt-2 inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground"
+                      >
+                        กลับไปดูคอร์ส
+                      </Link>
                     </>
                   ) : (
                     <p className="text-sm text-muted-foreground">กำลังโหลดวิดีโอ...</p>
