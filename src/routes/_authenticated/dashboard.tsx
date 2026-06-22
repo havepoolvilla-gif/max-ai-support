@@ -91,14 +91,38 @@ function CourseCard({
 }) {
   const { course, pct, total, completed } = item;
   const firstLesson = course.modules[0]?.lessons[0]?.id;
+  const initial = (course.title?.trim()?.[0] ?? "?").toUpperCase();
 
   return (
     <article className="group flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card transition-all hover:shadow-card-hover">
+      <div className="relative aspect-video w-full overflow-hidden bg-secondary">
+        {course.thumbnailUrl ? (
+          <img
+            src={course.thumbnailUrl}
+            alt={course.title}
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 via-secondary to-primary/5">
+            <span className="font-display text-5xl font-semibold text-primary/40">
+              {initial}
+            </span>
+          </div>
+        )}
+        <span className="absolute bottom-3 left-3 inline-flex items-center rounded-full bg-background/95 px-3 py-1 text-xs font-semibold text-foreground shadow-sm backdrop-blur">
+          เริ่มเรียน
+        </span>
+      </div>
+
       <div className="flex flex-1 flex-col p-6">
-        <h3 className="font-display text-lg font-semibold leading-snug tracking-tight text-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+          คอร์สเรียน
+        </p>
+        <h3 className="mt-2 font-display text-lg font-semibold leading-snug tracking-tight text-foreground">
           {course.title}
         </h3>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2">
           {course.tagline ?? "คอร์สบทเรียนแบบ bite-sized สำหรับการเรียนรู้ที่มีประสิทธิภาพ"}
         </p>
 
@@ -133,15 +157,23 @@ function CourseCard({
 function LockedCourseCard() {
   return (
     <article className="flex flex-col overflow-hidden rounded-xl border border-border bg-card shadow-card">
-      <div className="flex items-center gap-2 border-b border-notice-border bg-notice px-4 py-2.5 text-xs font-medium text-notice-foreground">
-        <AlertCircle className="h-3.5 w-3.5" />
-        ยังไม่ได้เปิดสิทธิ์
+      <div className="relative aspect-video w-full overflow-hidden bg-gradient-to-br from-secondary to-muted">
+        <div className="flex h-full w-full items-center justify-center">
+          <Lock className="h-10 w-10 text-muted-foreground/50" />
+        </div>
+        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full bg-notice px-3 py-1 text-xs font-semibold text-notice-foreground shadow-sm">
+          <AlertCircle className="h-3 w-3" />
+          ยังไม่ได้เปิดสิทธิ์
+        </span>
       </div>
       <div className="flex flex-1 flex-col p-6">
-        <h3 className="font-display text-lg font-semibold leading-snug tracking-tight text-foreground">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          คอร์สเรียน
+        </p>
+        <h3 className="mt-2 font-display text-lg font-semibold leading-snug tracking-tight text-foreground">
           Advanced Prompt Engineering
         </h3>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-3">
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground line-clamp-2">
           คอร์สนี้สงวนสำหรับสมาชิก Pro — ติดต่อผู้ดูแลเพื่อขอเปิดสิทธิ์การเข้าถึง
         </p>
 
@@ -166,3 +198,4 @@ function LockedCourseCard() {
     </article>
   );
 }
+
