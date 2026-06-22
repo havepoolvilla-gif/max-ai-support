@@ -10,6 +10,7 @@ import {
   upsertModule, deleteModule,
   upsertLesson, deleteLesson,
   listUsers, updateUserSubscription,
+  createStudent, grantCourseAccess, revokeCourseAccess,
 } from "@/lib/admin.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
