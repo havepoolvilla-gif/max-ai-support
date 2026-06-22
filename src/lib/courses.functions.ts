@@ -63,6 +63,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       { data: progress },
       { data: lastWatched },
       { data: roles },
+      { data: access },
     ] = await Promise.all([
       supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
       supabase.from("courses").select("*").order("sort_order"),
@@ -78,9 +79,11 @@ export const getDashboard = createServerFn({ method: "GET" })
         .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
+      supabase.from("course_access").select("course_id").eq("user_id", userId),
     ]);
 
     const isAdmin = (roles ?? []).some((r) => r.role === "admin");
+    const accessSet = new Set((access ?? []).map((a: any) => a.course_id));
 
     const lessonsByModule = new Map<string, LessonDTO[]>();
     for (const l of lessons ?? []) {
