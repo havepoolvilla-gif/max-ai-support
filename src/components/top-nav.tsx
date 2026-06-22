@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import logoAsset from "@/assets/skill-max-logo.png.asset.json";
+
 
 export function TopNav() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
