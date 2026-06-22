@@ -43,10 +43,14 @@ function AdminPanel() {
         <Tabs defaultValue="content">
           <TabsList className="border border-border bg-card">
             <TabsTrigger value="content">เนื้อหา (Courses)</TabsTrigger>
+            <TabsTrigger value="students">จัดการนักเรียน</TabsTrigger>
             <TabsTrigger value="users">ผู้ใช้</TabsTrigger>
           </TabsList>
           <TabsContent value="content" className="mt-6">
             <ContentManager />
+          </TabsContent>
+          <TabsContent value="students" className="mt-6">
+            <StudentsManager />
           </TabsContent>
           <TabsContent value="users" className="mt-6">
             <UsersManager />
