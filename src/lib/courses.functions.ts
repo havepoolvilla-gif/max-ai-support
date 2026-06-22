@@ -25,6 +25,12 @@ export type CourseDTO = {
   instructor: string | null;
   thumbnailUrl: string | null;
   sortOrder: number;
+  courseTier: string | null;
+  price: number;
+  previewVideoUrl: string | null;
+  purchaseUrl: string | null;
+  purchaseInfo: string | null;
+  hasAccess: boolean;
   modules: ModuleDTO[];
 };
 
