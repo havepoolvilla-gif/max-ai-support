@@ -14,7 +14,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/admin")({
-  head: () => ({ meta: [{ title: "Admin · Forge" }] }),
+  head: () => ({ meta: [{ title: "Admin · Skill Max" }] }),
   loader: async ({ context }) => {
     const dash = await context.queryClient.ensureQueryData({
       queryKey: ["dashboard"],

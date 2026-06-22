@@ -5,9 +5,9 @@ import { TopNav } from "@/components/top-nav";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Forge — คอร์สสั้นสำหรับวิศวกร AI" },
+      { title: "Skill Max — คอร์สสั้นสำหรับวิศวกร AI" },
       { name: "description", content: "เข้มข้น ตรงประเด็น และออกแบบมาเพื่อนักสร้าง เรียนรู้ระบบ AI ผ่านบทเรียน 10–15 นาที" },
-      { property: "og:title", content: "Forge — คอร์สสั้นสำหรับวิศวกร AI" },
+      { property: "og:title", content: "Skill Max — คอร์สสั้นสำหรับวิศวกร AI" },
       { property: "og:description", content: "เรียนรู้ระบบ AI ผ่านบทเรียน 10–15 นาที จากผู้ปฏิบัติงานจริงในอุตสาหกรรม" },
     ],
   }),
@@ -113,7 +113,7 @@ function Landing() {
 
       <footer className="border-t border-border bg-card">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-muted-foreground">
-          <span>© 2026 Forge Academy · ระบบทั้งหมดทำงานปกติ</span>
+          <span>© 2026 Skill Max Academy · ระบบทั้งหมดทำงานปกติ</span>
           <span>v0.1 · beta</span>
         </div>
       </footer>

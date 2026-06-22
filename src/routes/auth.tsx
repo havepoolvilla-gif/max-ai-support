@@ -1,13 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Zap } from "lucide-react";
+import logoAsset from "@/assets/skill-max-logo.png.asset.json";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "เข้าสู่ระบบ · Forge" },
+      { title: "เข้าสู่ระบบ · Skill Max" },
       { name: "description", content: "เข้าสู่ระบบด้วย Google เพื่อเริ่มเรียน" },
     ],
   }),
@@ -48,12 +49,14 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-6">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-8 flex items-center justify-center gap-2.5">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold">
-            F
-          </div>
+          <img
+            src={logoAsset.url}
+            alt="Skill Max"
+            className="h-10 w-10 object-contain"
+          />
           <div className="flex flex-col leading-none">
             <span className="font-display text-lg font-semibold tracking-tight text-foreground">
-              Forge
+              Skill Max
             </span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               AI Academy

@@ -15,7 +15,7 @@ const searchSchema = z.object({ lesson: z.string().optional() });
 
 export const Route = createFileRoute("/_authenticated/learn/$courseId")({
   validateSearch: searchSchema,
-  head: () => ({ meta: [{ title: "บทเรียน · Forge" }] }),
+  head: () => ({ meta: [{ title: "บทเรียน · Skill Max" }] }),
   loader: async ({ context }) => {
     await context.queryClient.ensureQueryData({
       queryKey: ["dashboard"],

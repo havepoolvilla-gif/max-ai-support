@@ -9,7 +9,7 @@ import { getDashboard, type CourseDTO } from "@/lib/courses.functions";
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
     meta: [
-      { title: "ห้องเรียนของฉัน · Forge" },
+      { title: "ห้องเรียนของฉัน · Skill Max" },
       { name: "description", content: "ศูนย์ควบคุมการเรียนรู้ของคุณ" },
     ],
   }),
