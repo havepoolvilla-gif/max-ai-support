@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
-import { LogOut, Zap } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,40 +33,37 @@ export function TopNav() {
     : "??";
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/70 backdrop-blur-xl">
+    <header className="sticky top-0 z-40 w-full border-b border-border bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="relative flex h-9 w-9 items-center justify-center rounded-md bg-gradient-to-br from-primary to-accent shadow-glow">
-            <Zap className="h-5 w-5 text-primary-foreground" strokeWidth={2.5} />
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-display font-bold">
+            F
           </div>
           <div className="flex flex-col leading-none">
-            <span className="font-display text-lg font-bold tracking-tight">FORGE</span>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+            <span className="font-display text-base font-semibold tracking-tight text-foreground">
+              Forge
+            </span>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               AI Academy
             </span>
           </div>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          <NavLink to="/" label="หน้าแรก" active={pathname === "/"} />
-          {user && (
-            <NavLink to="/dashboard" label="แดชบอร์ด" active={pathname.startsWith("/dashboard")} />
-          )}
-        </nav>
-
         <div className="flex items-center gap-3">
           {onLanding && !user ? (
             <Link
               to="/auth"
-              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 hover:shadow-glow"
+              className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-glow"
             >
               เข้าสู่ระบบ
             </Link>
           ) : user ? (
             <div className="flex items-center gap-3">
               <div className="hidden text-right sm:block">
-                <div className="text-sm font-medium leading-tight">{displayName}</div>
-                <div className="text-[10px] uppercase tracking-wider text-primary">
+                <div className="text-sm font-medium leading-tight text-foreground">
+                  {displayName}
+                </div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
                   เข้าสู่ระบบแล้ว
                 </div>
               </div>
@@ -74,17 +71,17 @@ export function TopNav() {
                 <img
                   src={user.user_metadata.avatar_url as string}
                   alt=""
-                  className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/30"
+                  className="h-9 w-9 rounded-full object-cover ring-1 ring-border"
                 />
               ) : (
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-xs font-semibold text-primary-foreground ring-2 ring-primary/30">
+                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground ring-1 ring-border">
                   {initials}
                 </div>
               )}
               <button
                 onClick={handleSignOut}
                 title="ออกจากระบบ"
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
               >
                 <LogOut className="h-4 w-4" />
               </button>
@@ -93,23 +90,5 @@ export function TopNav() {
         </div>
       </div>
     </header>
-  );
-}
-
-function NavLink({
-  to, label, active,
-}: { to: string; label: string; active: boolean }) {
-  return (
-    <Link
-      to={to as any}
-      className={`relative rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-        active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {label}
-      {active && (
-        <span className="absolute inset-x-3 -bottom-[1px] h-[2px] rounded-full bg-primary shadow-glow" />
-      )}
-    </Link>
   );
 }
