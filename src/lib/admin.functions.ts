@@ -146,12 +146,25 @@ export const listUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const { data, error } = await context.supabase
-      .from("profiles")
-      .select("id, email, full_name, subscription_status, created_at")
-      .order("created_at", { ascending: false });
-    if (error) throw error;
-    return data ?? [];
+    const [profilesRes, accessRes] = await Promise.all([
+      context.supabase
+        .from("profiles")
+        .select("id, email, full_name, subscription_status, created_at")
+        .order("created_at", { ascending: false }),
+      context.supabase.from("course_access").select("user_id, course_id"),
+    ]);
+    if (profilesRes.error) throw profilesRes.error;
+    if (accessRes.error) throw accessRes.error;
+    const byUser = new Map<string, string[]>();
+    for (const row of accessRes.data ?? []) {
+      const arr = byUser.get(row.user_id) ?? [];
+      arr.push(row.course_id);
+      byUser.set(row.user_id, arr);
+    }
+    return (profilesRes.data ?? []).map((p) => ({
+      ...p,
+      accessCourseIds: byUser.get(p.id) ?? [],
+    }));
   });
 
 export const updateUserSubscription = createServerFn({ method: "POST" })
@@ -173,3 +186,61 @@ export const updateUserSubscription = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+// ---------- COURSE ACCESS ----------
+export const grantCourseAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ userId: z.string().uuid(), courseId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase.from("course_access").upsert(
+      { user_id: data.userId, course_id: data.courseId, granted_by: context.userId },
+      { onConflict: "user_id,course_id" },
+    );
+    if (error) throw error;
+    return { ok: true };
+  });
+
+export const revokeCourseAccess = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ userId: z.string().uuid(), courseId: z.string().uuid() }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("course_access")
+      .delete()
+      .eq("user_id", data.userId)
+      .eq("course_id", data.courseId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
+// ---------- CREATE STUDENT (admin-only account provisioning) ----------
+export const createStudent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        email: z.string().email(),
+        password: z.string().min(6),
+        full_name: z.string().min(1),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email,
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { full_name: data.full_name },
+    });
+    if (error) throw new Error(error.message);
+    return { id: created.user?.id ?? null, email: data.email };
+  });
+
