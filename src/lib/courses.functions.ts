@@ -111,7 +111,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       modulesByCourse.set(m.course_id, arr);
     }
 
-    const courseDtos: CourseDTO[] = (courses ?? []).map((c) => ({
+    const courseDtos: CourseDTO[] = (courses ?? []).map((c: any) => ({
       id: c.id,
       title: c.title,
       tagline: c.tagline,
@@ -119,6 +119,12 @@ export const getDashboard = createServerFn({ method: "GET" })
       instructor: c.instructor,
       thumbnailUrl: c.thumbnail_url,
       sortOrder: c.sort_order,
+      courseTier: c.course_tier ?? null,
+      price: c.price ?? 0,
+      previewVideoUrl: c.preview_video_url ?? null,
+      purchaseUrl: c.purchase_url ?? null,
+      purchaseInfo: c.purchase_info ?? null,
+      hasAccess: isAdmin || accessSet.has(c.id),
       modules: modulesByCourse.get(c.id) ?? [],
     }));
 
