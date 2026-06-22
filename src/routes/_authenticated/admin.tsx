@@ -282,6 +282,11 @@ function CourseDialog({
   const [instructor, setInstructor] = useState(initial.instructor ?? "");
   const [thumbnail, setThumbnail] = useState(initial.thumbnailUrl ?? "");
   const [sortOrder, setSortOrder] = useState(initial.sortOrder ?? 0);
+  const [courseTier, setCourseTier] = useState(initial.courseTier ?? "");
+  const [price, setPrice] = useState(initial.price ?? 0);
+  const [previewVideoUrl, setPreviewVideoUrl] = useState(initial.previewVideoUrl ?? "");
+  const [purchaseUrl, setPurchaseUrl] = useState(initial.purchaseUrl ?? "");
+  const [purchaseInfo, setPurchaseInfo] = useState(initial.purchaseInfo ?? "");
 
   const save = useMutation({
     mutationFn: () =>
@@ -294,6 +299,11 @@ function CourseDialog({
           instructor: instructor || null,
           thumbnail_url: thumbnail || null,
           sort_order: Number(sortOrder) || 0,
+          course_tier: courseTier || null,
+          price: Number(price) || 0,
+          preview_video_url: previewVideoUrl || null,
+          purchase_url: purchaseUrl || null,
+          purchase_info: purchaseInfo || null,
         },
       }),
     onSuccess: onSaved,
@@ -301,12 +311,19 @@ function CourseDialog({
 
   return (
     <Modal title={initial.id ? "แก้ไขคอร์ส" : "เพิ่มคอร์ส"} onClose={onClose}>
-      <div className="space-y-3">
+      <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
         <Field label="ชื่อคอร์ส"><input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
-        <Field label="Tagline"><input className={inputCls} value={tagline} onChange={(e) => setTagline(e.target.value)} /></Field>
-        <Field label="รายละเอียด"><textarea className={inputCls} rows={3} value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
-        <Field label="ผู้สอน"><input className={inputCls} value={instructor} onChange={(e) => setInstructor(e.target.value)} /></Field>
-        <Field label="Thumbnail URL"><input className={inputCls} value={thumbnail} onChange={(e) => setThumbnail(e.target.value)} /></Field>
+        <Field label="Tagline"><input className={inputCls} value={tagline ?? ""} onChange={(e) => setTagline(e.target.value)} /></Field>
+        <Field label="รายละเอียด"><textarea className={inputCls} rows={3} value={description ?? ""} onChange={(e) => setDescription(e.target.value)} /></Field>
+        <Field label="ผู้สอน"><input className={inputCls} value={instructor ?? ""} onChange={(e) => setInstructor(e.target.value)} /></Field>
+        <Field label="Thumbnail URL"><input className={inputCls} value={thumbnail ?? ""} onChange={(e) => setThumbnail(e.target.value)} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Course Tier (slug เช่น ai_secretary)"><input className={inputCls} value={courseTier ?? ""} onChange={(e) => setCourseTier(e.target.value)} placeholder="ai_secretary" /></Field>
+          <Field label="ราคา (บาท)"><input type="number" className={inputCls} value={price} onChange={(e) => setPrice(Number(e.target.value))} /></Field>
+        </div>
+        <Field label="Preview Video URL (ตัวอย่างคอร์ส)"><input className={inputCls} value={previewVideoUrl ?? ""} onChange={(e) => setPreviewVideoUrl(e.target.value)} placeholder="https://..." /></Field>
+        <Field label="Purchase URL (ลิงก์ติดต่อสมัคร)"><input className={inputCls} value={purchaseUrl ?? ""} onChange={(e) => setPurchaseUrl(e.target.value)} placeholder="https://line.me/..." /></Field>
+        <Field label="ข้อมูลการชำระเงิน (แสดงในป๊อปอัพ)"><textarea className={inputCls} rows={3} value={purchaseInfo ?? ""} onChange={(e) => setPurchaseInfo(e.target.value)} placeholder="บัญชี ธ.กสิกร XXX-X-XXXXX-X ชื่อ ..." /></Field>
         <Field label="Sort Order"><input type="number" className={inputCls} value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} /></Field>
       </div>
       <div className="mt-5 flex justify-end gap-2">
