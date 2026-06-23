@@ -10,9 +10,9 @@ import {
   upsertModule, deleteModule,
   upsertLesson, deleteLesson,
   listUsers, updateUserSubscription,
-  createStudent, grantCourseAccess, revokeCourseAccess,
+  upsertPendingStudent, listPendingStudents, deletePendingStudent,
+  grantCourseAccess, revokeCourseAccess,
 } from "@/lib/admin.functions";
-import { getActivationPassword, setActivationPassword } from "@/lib/activation.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/admin")({
