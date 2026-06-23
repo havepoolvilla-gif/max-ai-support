@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       course_access: {
         Row: {
           course_id: string
@@ -200,6 +218,7 @@ export type Database = {
           email: string | null
           full_name: string | null
           id: string
+          is_activated: boolean
           subscription_status: Database["public"]["Enums"]["subscription_status"]
         }
         Insert: {
@@ -208,6 +227,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id: string
+          is_activated?: boolean
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
         }
         Update: {
@@ -216,6 +236,7 @@ export type Database = {
           email?: string | null
           full_name?: string | null
           id?: string
+          is_activated?: boolean
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
         }
         Relationships: []
@@ -282,6 +303,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      activate_account: { Args: { _password: string }; Returns: boolean }
       get_lesson_video_url: { Args: { _lesson_id: string }; Returns: string }
       has_role: {
         Args: {

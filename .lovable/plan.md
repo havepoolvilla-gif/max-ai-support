@@ -1,69 +1,55 @@
-# Commercial LMS Upgrade Plan
+## Goal
+After Google sign-in, gate the dashboard with a full-screen blur overlay that asks first-time users for a universal activation password. Once correct, persist `is_activated=true` and never show it again.
 
-Transform Skill Max into an admin-managed commercial LMS. Keep the clean light-mode look and all Thai labels.
+## 1. Database (single migration)
+- Add `is_activated BOOLEAN NOT NULL DEFAULT false` to `public.profiles`.
+- Add `public.app_settings` table (singleton key/value) to store the activation password set by admins:
+  - columns: `key TEXT PRIMARY KEY`, `value TEXT NOT NULL`, `updated_at`
+  - GRANTs: `SELECT` to authenticated is NOT given (password stays server-only); `ALL` to `service_role`. Admins read/write only through server functions.
+  - Seed initial row: `('activation_password', 'FORGE2026')`.
+- Add server-side RPC `activate_account(_password text)` (SECURITY DEFINER):
+  - Compares against `app_settings.activation_password`.
+  - If match: sets `profiles.is_activated = true` for `auth.uid()` and returns `true`. Otherwise returns `false`.
+- Grant EXECUTE on the RPC to `authenticated`.
 
-## 1. Database changes (single migration)
+## 2. Server functions (`src/lib/activation.functions.ts`)
+- `getActivationStatus` (auth) → returns `{ isActivated: boolean }` from `profiles`.
+- `activateAccount` (auth, input `{ password }`) → calls the RPC, returns `{ ok: boolean }`.
+- `getActivationPassword` (auth + admin check) → returns current password (admin panel only).
+- `setActivationPassword` (auth + admin check, input `{ password }`) → upserts into `app_settings`.
 
-**Extend `courses`** (per-course tier is simpler than per-lesson and matches "AI เลขา 999 บาท"):
-- `course_tier` TEXT (slug, e.g. `ai_secretary`) — unique
-- `price` INTEGER (THB, default 0)
-- `preview_video_url` TEXT (nullable) — for "ดูตัวอย่างคอร์ส"
-- `purchase_url` TEXT (nullable) — sales/contact link for "สนใจสมัครเรียน"
-- `purchase_info` TEXT (nullable) — payment info shown in popup if no URL
+## 3. Auth page (`src/routes/auth.tsx`)
+- Remove email/password form and all related state. Keep only the "เข้าสู่ระบบด้วย Google" button (and existing error display).
+- Keep the existing `handle_new_user` trigger — it already saves email + full_name from Google metadata into `profiles`.
 
-**New table `course_access`** — per-student grants:
-- `user_id` UUID → auth.users
-- `course_id` UUID → courses
-- `granted_by` UUID, `granted_at` TIMESTAMPTZ
-- PK (`user_id`, `course_id`)
-- RLS: students read their own rows; admins manage all (`has_role`)
-- GRANTs: SELECT for `authenticated`, ALL for `service_role`
+## 4. Activation overlay
+- New component `src/components/activation-gate.tsx`:
+  - Uses `useQuery(getActivationStatus)` after sign-in.
+  - While loading: render children hidden behind a skeleton.
+  - If `isActivated === false`: render children with a backdrop-blur, non-dismissible dialog centered on top:
+    - Title: "ยืนยันสิทธิ์เข้าใช้งานครั้งแรก"
+    - Copy: "กรุณากรอกรหัสผ่านเพื่อยืนยันสิทธิ์เข้าใช้งานครั้งแรก (รับรหัสจากแอดมิน)"
+    - Single password input + submit button "ยืนยัน"
+    - On submit → `activateAccount`; on success invalidate the status query so overlay disappears; on failure show "รหัสไม่ถูกต้อง".
+  - If `isActivated === true`: render children normally.
+- Mount the gate inside `src/routes/_authenticated/route.tsx` wrapping `<Outlet />` so every authenticated page is protected (dashboard, learn, admin).
 
-**Update `get_lesson_video_url`** function: allow playback when the caller is admin OR has a `course_access` row for the lesson's course (replaces the current `subscription_status` gate, which becomes legacy).
+## 5. Admin panel
+- In `src/routes/_authenticated/admin.tsx`, add a small "รหัสเปิดใช้งานระบบ" card in the existing settings area:
+  - Loads current password via `getActivationPassword`.
+  - Input + "บันทึก" button calls `setActivationPassword`.
 
-## 2. Admin: Manage Students section
+## 6. Styling
+- Reuse existing shadcn `Dialog`/`Card`/`Input`/`Button` to keep the minimalist light theme and Thai typography intact. Backdrop uses `backdrop-blur-md bg-background/70`.
 
-In `src/routes/_authenticated/admin.tsx`, add a "จัดการนักเรียน" tab/section:
+## Technical notes
+- The activation password is never sent to the client by default — only the admin-only `getActivationPassword` returns it. Students POST their attempt to the server function which calls the SECURITY DEFINER RPC.
+- `is_activated` defaults to `false` for existing rows; admins can be auto-activated by the migration (`UPDATE profiles SET is_activated = true WHERE id IN (SELECT user_id FROM user_roles WHERE role='admin')`).
 
-**Create account form** (Full Name, Email, Password + "สุ่มรหัสผ่าน" button):
-- Client-side generator: 8 chars, mixed upper/lower/digit/symbol, crypto-random.
-- Submits to new server fn `createStudent` in `src/lib/admin.functions.ts` which:
-  - Verifies caller is admin
-  - Inside handler: dynamic-imports `client.server` → `supabaseAdmin.auth.admin.createUser({ email, password, email_confirm: true, user_metadata: { full_name } })`
-  - The existing `handle_new_user` trigger auto-creates the profile + student role
-- Returns the email/password so admin can copy and send
-
-**Student list** with per-course access toggles:
-- Replaces the current subscription dropdown
-- Shows each student with a checkbox per course (course title + tier badge)
-- Toggling calls new server fns `grantCourseAccess` / `revokeCourseAccess`
-- Extend `listUsers` to also return `accessCourseIds: string[]`
-
-## 3. Auth update
-
-Login already uses email + password (`src/routes/auth.tsx`). Action: remove/hide the public Sign-Up form so only admin-created students can log in. Keep Google sign-in only if the user wants it (see open question).
-
-## 4. Dashboard preview/buy for locked courses
-
-In `src/routes/_authenticated/dashboard.tsx`, `LockedCourseCard`:
-- Keep current look, thumbnail, soft yellow "ยังไม่ได้เปิดสิทธิ์" badge
-- Add two buttons:
-  - **ดูตัวอย่างคอร์ส** → opens a Dialog with a `<video>`/iframe of `course.previewVideoUrl` (button hidden if null)
-  - **สนใจสมัครเรียน** (primary) → opens a Dialog showing `purchase_info` and, if `purchase_url` set, a "ติดต่อสมัคร" link button
-
-"Locked" logic changes from `subscription_status` to: `isAdmin || course_access row exists for this course`. Update `getDashboard` to fetch `course_access` for the user and compute access per course, plus expose `previewVideoUrl`, `purchaseUrl`, `purchaseInfo`, `price`, `courseTier` on `CourseDTO`. `learn.$courseId.tsx` gate uses the same rule.
-
-## Files touched
-
-- New migration (schema + RLS + grants + updated `get_lesson_video_url`)
-- `src/lib/admin.functions.ts` — `createStudent`, `grantCourseAccess`, `revokeCourseAccess`, expand `listUsers`, expand `upsertCourse` for new fields
-- `src/lib/courses.functions.ts` — extend `CourseDTO` and `getDashboard` with access list + new course fields
-- `src/routes/_authenticated/admin.tsx` — Manage Students UI, course fields in course form
-- `src/routes/_authenticated/dashboard.tsx` — preview/buy dialogs, access-based lock
-- `src/routes/_authenticated/learn.$courseId.tsx` — access check based on `course_access`
-- `src/routes/auth.tsx` — hide public sign-up
-
-## Open questions
-
-1. Keep Google sign-in available, or restrict to admin-created email+password only?
-2. For "สนใจสมัครเรียน" — do you want a single global contact link (e.g. LINE/Messenger) used for all courses, or per-course `purchase_url`/`purchase_info` set in the admin panel? (Plan currently assumes per-course.)
+## Files
+- new: `supabase/migrations/<ts>_activation.sql`
+- new: `src/lib/activation.functions.ts`
+- new: `src/components/activation-gate.tsx`
+- edit: `src/routes/auth.tsx` (Google-only)
+- edit: `src/routes/_authenticated/route.tsx` (mount gate)
+- edit: `src/routes/_authenticated/admin.tsx` (password setting)

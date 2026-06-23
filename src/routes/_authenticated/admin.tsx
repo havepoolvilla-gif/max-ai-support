@@ -12,6 +12,7 @@ import {
   listUsers, updateUserSubscription,
   createStudent, grantCourseAccess, revokeCourseAccess,
 } from "@/lib/admin.functions";
+import { getActivationPassword, setActivationPassword } from "@/lib/activation.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -45,6 +46,7 @@ function AdminPanel() {
             <TabsTrigger value="content">เนื้อหา (Courses)</TabsTrigger>
             <TabsTrigger value="students">จัดการนักเรียน</TabsTrigger>
             <TabsTrigger value="users">ผู้ใช้</TabsTrigger>
+            <TabsTrigger value="settings">ตั้งค่า</TabsTrigger>
           </TabsList>
           <TabsContent value="content" className="mt-6">
             <ContentManager />
@@ -54,6 +56,9 @@ function AdminPanel() {
           </TabsContent>
           <TabsContent value="users" className="mt-6">
             <UsersManager />
+          </TabsContent>
+          <TabsContent value="settings" className="mt-6">
+            <SettingsManager />
           </TabsContent>
         </Tabs>
       </main>
@@ -728,6 +733,82 @@ function StudentsManager() {
           </table>
         </div>
       </section>
+    </div>
+  );
+}
+
+function SettingsManager() {
+  const qc = useQueryClient();
+  const { data } = useSuspenseQuery({
+    queryKey: ["activation-password"],
+    queryFn: () => getActivationPassword(),
+  });
+  const [password, setPassword] = useState(data.password);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPassword(data.password);
+  }, [data.password]);
+
+  const save = useMutation({
+    mutationFn: async (pw: string) => setActivationPassword({ data: { password: pw } }),
+    onSuccess: () => {
+      setSavedAt(Date.now());
+      setError(null);
+      qc.invalidateQueries({ queryKey: ["activation-password"] });
+    },
+    onError: (e: any) => setError(e?.message ?? "บันทึกไม่สำเร็จ"),
+  });
+
+  return (
+    <div className="max-w-xl rounded-2xl border border-border bg-card p-8 shadow-sm">
+      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+        การยืนยันสิทธิ์
+      </div>
+      <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
+        รหัสเปิดใช้งานระบบ
+      </h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        รหัสนี้จะถูกใช้โดยนักเรียนใหม่ในการยืนยันสิทธิ์ครั้งแรกหลังเข้าสู่ระบบด้วย Google
+      </p>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!password.trim()) return;
+          save.mutate(password.trim());
+        }}
+        className="mt-6 space-y-3"
+      >
+        <label className="block">
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            รหัสเปิดใช้งาน
+          </div>
+          <input
+            type="text"
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+          />
+        </label>
+        <button
+          type="submit"
+          disabled={save.isPending}
+          className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-glow disabled:opacity-60"
+        >
+          {save.isPending ? "กำลังบันทึก..." : "บันทึก"}
+        </button>
+        {savedAt && (
+          <div className="text-xs text-emerald-600">บันทึกเรียบร้อยแล้ว</div>
+        )}
+        {error && (
+          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            {error}
+          </div>
+        )}
+      </form>
     </div>
   );
 }
