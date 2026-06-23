@@ -219,28 +219,97 @@ export const revokeCourseAccess = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ---------- CREATE STUDENT (admin-only account provisioning) ----------
-export const createStudent = createServerFn({ method: "POST" })
+// ---------- PENDING STUDENTS (admin-driven pre-authorization) ----------
+const codeRegex = /^[A-Za-z0-9]{10}$/;
+
+export const upsertPendingStudent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
     z
       .object({
         email: z.string().email(),
-        password: z.string().min(6),
         full_name: z.string().min(1),
+        phone: z.string().nullable().optional(),
+        activation_code: z.string().regex(codeRegex, "ต้องเป็นรหัส 10 ตัวอักษร A-Z, a-z, 0-9"),
+        course_ids: z.array(z.string().uuid()).default([]),
       })
       .parse(d),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
+    const email = data.email.trim().toLowerCase();
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: created, error } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
-      password: data.password,
-      email_confirm: true,
-      user_metadata: { full_name: data.full_name },
-    });
-    if (error) throw new Error(error.message);
-    return { id: created.user?.id ?? null, email: data.email };
+
+    // If a profile already exists for this email, update it directly + reset access.
+    const { data: existing } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .ilike("email", email)
+      .maybeSingle();
+
+    if (existing?.id) {
+      const { error: upErr } = await supabaseAdmin
+        .from("profiles")
+        .update({
+          full_name: data.full_name,
+          phone: data.phone ?? null,
+          activation_code: data.activation_code,
+          is_activated: false,
+        })
+        .eq("id", existing.id);
+      if (upErr) throw upErr;
+
+      await supabaseAdmin.from("course_access").delete().eq("user_id", existing.id);
+      if (data.course_ids.length > 0) {
+        const rows = data.course_ids.map((cid) => ({
+          user_id: existing.id,
+          course_id: cid,
+          granted_by: context.userId,
+        }));
+        const { error: insErr } = await supabaseAdmin.from("course_access").insert(rows);
+        if (insErr) throw insErr;
+      }
+      return { mode: "profile" as const, email };
+    }
+
+    const { error } = await supabaseAdmin.from("pending_students").upsert(
+      {
+        email,
+        full_name: data.full_name,
+        phone: data.phone ?? null,
+        activation_code: data.activation_code,
+        course_ids: data.course_ids,
+        created_by: context.userId,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "email" },
+    );
+    if (error) throw error;
+    return { mode: "pending" as const, email };
+  });
+
+export const listPendingStudents = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { data, error } = await context.supabase
+      .from("pending_students")
+      .select("email, full_name, phone, activation_code, course_ids, created_at")
+      .order("created_at", { ascending: false });
+    if (error) throw error;
+    return data ?? [];
+  });
+
+export const deletePendingStudent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ email: z.string().email() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { error } = await context.supabase
+      .from("pending_students")
+      .delete()
+      .eq("email", data.email.trim().toLowerCase());
+    if (error) throw error;
+    return { ok: true };
   });
 
