@@ -50,29 +50,37 @@ export function ActivationGate({ children }: { children: React.ReactNode }) {
               ยืนยันสิทธิ์เข้าใช้งานครั้งแรก
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              กรุณากรอกรหัสผ่านเพื่อยืนยันสิทธิ์เข้าใช้งานครั้งแรก (รับรหัสจากแอดมิน)
+              กรุณากรอกรหัสผ่าน 10 หลักที่ได้รับจากแอดมินเพื่อยืนยันสิทธิ์เข้าเรียนครั้งแรก
             </p>
 
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                if (!password.trim()) return;
-                mutation.mutate(password.trim());
+                const pw = password.trim();
+                if (pw.length !== 10) {
+                  setError("กรุณากรอกรหัส 10 หลัก");
+                  return;
+                }
+                mutation.mutate(pw);
               }}
               className="mt-6 space-y-3"
             >
               <label className="block">
                 <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  รหัสเปิดใช้งาน
+                  รหัสเปิดใช้งาน 10 หลัก
                 </div>
                 <input
-                  type="password"
+                  type="text"
                   required
                   autoFocus
+                  inputMode="text"
+                  autoComplete="off"
+                  spellCheck={false}
+                  maxLength={10}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="กรอกรหัสจากแอดมิน"
-                  className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
+                  onChange={(e) => setPassword(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 10))}
+                  placeholder="A1B2C3D4E5"
+                  className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-center font-mono text-lg tracking-[0.4em] focus:border-primary focus:outline-none"
                 />
               </label>
               <button
@@ -90,7 +98,7 @@ export function ActivationGate({ children }: { children: React.ReactNode }) {
             </form>
 
             <p className="mt-6 text-center text-xs text-muted-foreground">
-              หากยังไม่มีรหัส โปรดติดต่อแอดมินเพื่อขอรหัสเปิดใช้งาน
+              หากยังไม่ได้รับรหัส กรุณาติดต่อแอดมินเพื่อขอรหัสเปิดใช้งาน
             </p>
           </div>
         </div>
