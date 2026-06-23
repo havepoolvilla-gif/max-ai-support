@@ -46,7 +46,6 @@ function AdminPanel() {
             <TabsTrigger value="content">เนื้อหา (Courses)</TabsTrigger>
             <TabsTrigger value="students">จัดการนักเรียน</TabsTrigger>
             <TabsTrigger value="users">ผู้ใช้</TabsTrigger>
-            <TabsTrigger value="settings">ตั้งค่า</TabsTrigger>
           </TabsList>
           <TabsContent value="content" className="mt-6">
             <ContentManager />
@@ -56,9 +55,6 @@ function AdminPanel() {
           </TabsContent>
           <TabsContent value="users" className="mt-6">
             <UsersManager />
-          </TabsContent>
-          <TabsContent value="settings" className="mt-6">
-            <SettingsManager />
           </TabsContent>
         </Tabs>
       </main>
