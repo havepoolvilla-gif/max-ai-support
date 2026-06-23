@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle, X, Paperclip, Send, Image as ImageIcon, Video, FileText, Loader2 } from "lucide-react";
+import { MessageCircle, X, Paperclip, Send, FileText, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listMyMessages,
