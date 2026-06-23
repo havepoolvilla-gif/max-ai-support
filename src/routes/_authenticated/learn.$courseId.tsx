@@ -210,6 +210,8 @@ function Player() {
                   ref={videoRef}
                   key={active.lesson.id}
                   controls
+                  onTimeUpdate={onTimeUpdate}
+                  onPause={onPause}
                   className="aspect-video w-full bg-black"
                   poster={`https://placehold.co/1280x720/F8F9FA/0F172A?text=${encodeURIComponent(active.lesson.title)}`}
                 >
