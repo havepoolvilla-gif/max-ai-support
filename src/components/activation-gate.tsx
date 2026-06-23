@@ -24,8 +24,9 @@ export function ActivationGate({ children }: { children: React.ReactNode }) {
         setError(null);
         setPassword("");
         queryClient.invalidateQueries({ queryKey: ["activation-status"] });
+        queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       } else {
-        setError("รหัสไม่ถูกต้อง กรุณาลองอีกครั้ง");
+        setError("รหัสไม่ถูกต้อง — กรุณาตรวจสอบกับแอดมิน");
       }
     },
     onError: () => setError("เกิดข้อผิดพลาด กรุณาลองอีกครั้ง"),
