@@ -1,6 +1,7 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { ActivationGate } from "@/components/activation-gate";
+import { SupportChatWidget } from "@/components/support-chat-widget";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -9,9 +10,16 @@ export const Route = createFileRoute("/_authenticated")({
     if (error || !data.user) throw redirect({ to: "/auth" });
     return { user: data.user };
   },
-  component: () => (
+  component: AuthLayout,
+});
+
+function AuthLayout() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const hideWidget = pathname.startsWith("/admin");
+  return (
     <ActivationGate>
       <Outlet />
+      {!hideWidget && <SupportChatWidget />}
     </ActivationGate>
-  ),
-});
+  );
+}

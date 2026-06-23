@@ -14,6 +14,7 @@ import {
   grantCourseAccess, revokeCourseAccess,
 } from "@/lib/admin.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { SupportConsole } from "@/components/admin/support-console";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   head: () => ({ meta: [{ title: "Admin · Skill Max" }] }),
@@ -46,6 +47,7 @@ function AdminPanel() {
             <TabsTrigger value="content">เนื้อหา (Courses)</TabsTrigger>
             <TabsTrigger value="students">จัดการนักเรียน</TabsTrigger>
             <TabsTrigger value="users">ผู้ใช้</TabsTrigger>
+            <TabsTrigger value="support">กล่องข้อความช่วยเหลือ</TabsTrigger>
           </TabsList>
           <TabsContent value="content" className="mt-6">
             <ContentManager />
@@ -55,6 +57,9 @@ function AdminPanel() {
           </TabsContent>
           <TabsContent value="users" className="mt-6">
             <UsersManager />
+          </TabsContent>
+          <TabsContent value="support" className="mt-6">
+            <SupportConsole />
           </TabsContent>
         </Tabs>
       </main>
