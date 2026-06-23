@@ -1,10 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
-import { Lock, AlertCircle, PlayCircle, X, ExternalLink } from "lucide-react";
+import { Lock, AlertCircle, PlayCircle, X, ExternalLink, Play } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
 import { StudentSidebar } from "@/components/student-sidebar";
-import { getDashboard, type CourseDTO } from "@/lib/courses.functions";
+import { getDashboard, type CourseDTO, type LastWatchedDTO } from "@/lib/courses.functions";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -66,6 +66,8 @@ function Dashboard() {
             </p>
           </header>
 
+          <ContinueCard lastWatched={data.lastWatched} />
+
           {enriched.length === 0 ? (
             <div className="rounded-xl border border-border bg-card p-12 text-center text-sm text-muted-foreground shadow-card">
               ยังไม่มีคอร์สในระบบ — ให้ผู้ดูแลสร้างคอร์สแรกในแอดมินแพแนล
@@ -94,6 +96,66 @@ function Dashboard() {
       )}
       {buyCourse && <BuyDialog course={buyCourse} onClose={() => setBuyCourse(null)} />}
     </div>
+  );
+}
+
+function formatTs(s: number) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, "0")}`;
+}
+
+function ContinueCard({ lastWatched }: { lastWatched: LastWatchedDTO }) {
+  if (!lastWatched) {
+    return (
+      <section className="mb-8 rounded-xl border border-dashed border-border bg-card/60 p-6 text-sm text-muted-foreground">
+        เลือกคอร์สด้านล่างเพื่อเริ่มเรียนบทแรกของคุณ
+      </section>
+    );
+  }
+  const { courseId, lessonId, positionSeconds, courseTitle, moduleTitle, lessonTitle, thumbnailUrl } = lastWatched;
+  const initial = (courseTitle?.trim()?.[0] ?? "?").toUpperCase();
+  return (
+    <section className="mb-8 overflow-hidden rounded-2xl border border-border bg-card shadow-card">
+      <div className="flex flex-col gap-0 md:flex-row">
+        <div className="relative aspect-video w-full overflow-hidden bg-secondary md:w-72 md:shrink-0">
+          {thumbnailUrl ? (
+            <img src={thumbnailUrl} alt={courseTitle} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 via-secondary to-primary/5">
+              <span className="font-display text-5xl font-semibold text-primary/40">{initial}</span>
+            </div>
+          )}
+        </div>
+        <div className="flex flex-1 flex-col justify-center p-6 md:p-8">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+            เริ่มเรียนต่อจากคอร์สเดิม
+          </div>
+          <h2 className="mt-2 font-display text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+            {courseTitle}
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {moduleTitle} · {lessonTitle}
+          </p>
+          {positionSeconds > 5 && (
+            <p className="mt-2 text-xs font-medium text-muted-foreground tabular-nums">
+              เล่นต่อจาก {formatTs(positionSeconds)}
+            </p>
+          )}
+          <div className="mt-5">
+            <Link
+              to="/learn/$courseId"
+              params={{ courseId }}
+              search={{ lesson: lessonId, t: positionSeconds }}
+              className="inline-flex items-center gap-2 rounded-md bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-glow"
+            >
+              <Play className="h-4 w-4" />
+              เรียนต่อจากจุดที่ค้างไว้
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
