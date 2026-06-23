@@ -43,11 +43,21 @@ export type ProfileDTO = {
   isAdmin: boolean;
 };
 
+export type LastWatchedDTO = {
+  courseId: string;
+  lessonId: string;
+  positionSeconds: number;
+  courseTitle: string;
+  moduleTitle: string;
+  lessonTitle: string;
+  thumbnailUrl: string | null;
+} | null;
+
 export type DashboardDTO = {
   profile: ProfileDTO;
   courses: CourseDTO[];
   completedLessonIds: string[];
-  lastWatched: { courseId: string; lessonId: string } | null;
+  lastWatched: LastWatchedDTO;
 };
 
 export const getDashboard = createServerFn({ method: "GET" })
@@ -75,7 +85,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       supabase.from("lesson_progress").select("lesson_id").eq("user_id", userId),
       supabase
         .from("user_last_watched")
-        .select("course_id, lesson_id")
+        .select("course_id, lesson_id, position_seconds")
         .eq("user_id", userId)
         .maybeSingle(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
@@ -128,6 +138,24 @@ export const getDashboard = createServerFn({ method: "GET" })
       modules: modulesByCourse.get(c.id) ?? [],
     }));
 
+    let enrichedLastWatched: LastWatchedDTO = null;
+    if (lastWatched) {
+      const c = courseDtos.find((x) => x.id === lastWatched.course_id);
+      const m = c?.modules.find((mm) => mm.lessons.some((ll) => ll.id === lastWatched.lesson_id));
+      const l = m?.lessons.find((ll) => ll.id === lastWatched.lesson_id);
+      if (c && m && l) {
+        enrichedLastWatched = {
+          courseId: c.id,
+          lessonId: l.id,
+          positionSeconds: (lastWatched as any).position_seconds ?? 0,
+          courseTitle: c.title,
+          moduleTitle: m.title,
+          lessonTitle: l.title,
+          thumbnailUrl: c.thumbnailUrl,
+        };
+      }
+    }
+
     return {
       profile: {
         id: userId,
@@ -142,8 +170,6 @@ export const getDashboard = createServerFn({ method: "GET" })
       },
       courses: courseDtos,
       completedLessonIds: (progress ?? []).map((p) => p.lesson_id),
-      lastWatched: lastWatched
-        ? { courseId: lastWatched.course_id, lessonId: lastWatched.lesson_id }
-        : null,
+      lastWatched: enrichedLastWatched,
     };
   });
