@@ -1,0 +1,1 @@
+ALTER TABLE public.user_last_watched ADD COLUMN IF NOT EXISTS position_seconds INTEGER NOT NULL DEFAULT 0;

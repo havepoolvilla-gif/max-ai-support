@@ -27,7 +27,13 @@ export const toggleLessonComplete = createServerFn({ method: "POST" })
 export const setLastWatched = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) =>
-    z.object({ courseId: z.string().uuid(), lessonId: z.string().uuid() }).parse(d),
+    z
+      .object({
+        courseId: z.string().uuid(),
+        lessonId: z.string().uuid(),
+        positionSeconds: z.number().int().min(0).max(60 * 60 * 24).optional(),
+      })
+      .parse(d),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -36,6 +42,7 @@ export const setLastWatched = createServerFn({ method: "POST" })
         user_id: userId,
         course_id: data.courseId,
         lesson_id: data.lessonId,
+        position_seconds: data.positionSeconds ?? 0,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "user_id" },

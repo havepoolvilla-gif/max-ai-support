@@ -284,18 +284,21 @@ export type Database = {
         Row: {
           course_id: string
           lesson_id: string
+          position_seconds: number
           updated_at: string
           user_id: string
         }
         Insert: {
           course_id: string
           lesson_id: string
+          position_seconds?: number
           updated_at?: string
           user_id: string
         }
         Update: {
           course_id?: string
           lesson_id?: string
+          position_seconds?: number
           updated_at?: string
           user_id?: string
         }
