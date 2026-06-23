@@ -280,6 +280,45 @@ export type Database = {
         }
         Relationships: []
       }
+      support_messages: {
+        Row: {
+          attachment_name: string | null
+          attachment_path: string | null
+          attachment_type: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message_text: string | null
+          sender_id: string
+          sender_role: string
+          student_id: string
+        }
+        Insert: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_type?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text?: string | null
+          sender_id: string
+          sender_role: string
+          student_id: string
+        }
+        Update: {
+          attachment_name?: string | null
+          attachment_path?: string | null
+          attachment_type?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text?: string | null
+          sender_id?: string
+          sender_role?: string
+          student_id?: string
+        }
+        Relationships: []
+      }
       user_last_watched: {
         Row: {
           course_id: string
