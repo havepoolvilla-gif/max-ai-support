@@ -239,13 +239,7 @@ export function Bubble({ msg, mine }: { msg: SupportMessageDTO; mine: boolean })
               mine ? "bg-primary-foreground/15" : "bg-muted"
             }`}
           >
-            {msg.attachmentType === "image" ? (
-              <ImageIcon className="h-4 w-4" />
-            ) : msg.attachmentType === "video" ? (
-              <Video className="h-4 w-4" />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
+            <FileText className="h-4 w-4" />
             <span className="truncate">{msg.attachmentName ?? "ไฟล์แนบ"}</span>
           </a>
         )}
