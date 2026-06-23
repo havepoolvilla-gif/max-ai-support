@@ -11,7 +11,10 @@ import { getLessonVideo } from "@/lib/lesson-video.functions";
 import { toggleLessonComplete, setLastWatched } from "@/lib/progress.functions";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 
-const searchSchema = z.object({ lesson: z.string().optional() });
+const searchSchema = z.object({
+  lesson: z.string().optional(),
+  t: z.coerce.number().int().min(0).optional(),
+});
 
 export const Route = createFileRoute("/_authenticated/learn/$courseId")({
   validateSearch: searchSchema,
@@ -33,7 +36,7 @@ function formatDuration(seconds: number) {
 
 function Player() {
   const { courseId } = Route.useParams();
-  const { lesson: lessonParam } = Route.useSearch();
+  const { lesson: lessonParam, t: tParam } = Route.useSearch();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
@@ -53,6 +56,7 @@ function Player() {
   const activeIndex = flatLessons.findIndex((x) => x.lesson.id === activeId);
   const active = flatLessons[activeIndex];
   const videoRef = useRef<HTMLVideoElement>(null);
+  const lastSavedSecondRef = useRef<number>(-1);
 
   const videoQuery = useQuery({
     queryKey: ["lesson-video", active?.lesson.id],
@@ -70,13 +74,15 @@ function Player() {
   });
 
   const lastWatchedMut = useMutation({
-    mutationFn: (vars: { courseId: string; lessonId: string }) =>
+    mutationFn: (vars: { courseId: string; lessonId: string; positionSeconds?: number }) =>
       setLastWatched({ data: vars }),
   });
 
+  // Reset on lesson change: register lesson + read localStorage fallback for resume
   useEffect(() => {
     if (active && course) {
-      lastWatchedMut.mutate({ courseId: course.id, lessonId: active.lesson.id });
+      lastWatchedMut.mutate({ courseId: course.id, lessonId: active.lesson.id, positionSeconds: 0 });
+      lastSavedSecondRef.current = -1;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active?.lesson.id, course?.id]);
@@ -84,6 +90,62 @@ function Player() {
   useEffect(() => {
     videoRef.current?.load();
   }, [active?.lesson.id]);
+
+  // Seek to resume timestamp once metadata is ready or url changes
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v || !canWatch || !active) return;
+    const localKey = `lastWatched:${active.lesson.id}`;
+    const local = Number(localStorage.getItem(localKey) ?? "0");
+    const startAt = Math.max(tParam ?? 0, isNaN(local) ? 0 : local);
+    if (startAt <= 0) return;
+    const seek = () => {
+      try {
+        if (v.duration && startAt < v.duration - 2) v.currentTime = startAt;
+      } catch {}
+    };
+    if (v.readyState >= 1) seek();
+    else v.addEventListener("loadedmetadata", seek, { once: true });
+    return () => v.removeEventListener("loadedmetadata", seek);
+  }, [active?.lesson.id, canWatch, videoUrl, tParam]);
+
+  // Persist playback position
+  const persist = (sec: number) => {
+    if (!active || !course) return;
+    const rounded = Math.floor(sec);
+    if (rounded === lastSavedSecondRef.current) return;
+    lastSavedSecondRef.current = rounded;
+    try {
+      localStorage.setItem(`lastWatched:${active.lesson.id}`, String(rounded));
+    } catch {}
+    lastWatchedMut.mutate({ courseId: course.id, lessonId: active.lesson.id, positionSeconds: rounded });
+  };
+
+  const onTimeUpdate = () => {
+    const v = videoRef.current;
+    if (!v) return;
+    const sec = Math.floor(v.currentTime);
+    if (sec > 0 && sec % 10 === 0) persist(sec);
+  };
+  const onPause = () => {
+    const v = videoRef.current;
+    if (v) persist(v.currentTime);
+  };
+
+  useEffect(() => {
+    const onHide = () => {
+      const v = videoRef.current;
+      if (v && !v.paused) persist(v.currentTime);
+    };
+    const onVis = () => { if (document.visibilityState === "hidden") onHide(); };
+    window.addEventListener("beforeunload", onHide);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("beforeunload", onHide);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active?.lesson.id, course?.id]);
 
   if (!course || !active) {
     return (
