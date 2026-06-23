@@ -10,7 +10,7 @@ export function StudentSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
   const items: Item[] = [
     { to: "/dashboard", label: "ห้องเรียนของฉัน", icon: <GraduationCap className="h-4.5 w-4.5" /> },
     { to: "/dashboard", label: "คอร์สของฉัน", icon: <BookOpen className="h-4.5 w-4.5" /> },
-    { to: "/dashboard", label: "โปรไฟล์", icon: <UserIcon className="h-4.5 w-4.5" /> },
+    { to: "/profile", label: "โปรไฟล์", icon: <UserIcon className="h-4.5 w-4.5" /> },
   ];
 
   return (
@@ -20,8 +20,11 @@ export function StudentSidebar({ isAdmin = false }: { isAdmin?: boolean }) {
           เมนู
         </div>
         <ul className="space-y-1">
-          {items.map((item, idx) => {
-            const active = idx === 0 && pathname.startsWith("/dashboard");
+          {items.map((item) => {
+            const active =
+              item.to === "/profile"
+                ? pathname.startsWith("/profile")
+                : pathname.startsWith("/dashboard") && item.to === "/dashboard";
             return (
               <li key={item.label}>
                 <Link
