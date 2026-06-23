@@ -211,32 +211,71 @@ export type Database = {
           },
         ]
       }
+      pending_students: {
+        Row: {
+          activation_code: string
+          course_ids: string[]
+          created_at: string
+          created_by: string | null
+          email: string
+          full_name: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          activation_code: string
+          course_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          email: string
+          full_name: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          activation_code?: string
+          course_ids?: string[]
+          created_at?: string
+          created_by?: string | null
+          email?: string
+          full_name?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          activation_code: string | null
           avatar_url: string | null
           created_at: string
           email: string | null
           full_name: string | null
           id: string
           is_activated: boolean
+          phone: string | null
           subscription_status: Database["public"]["Enums"]["subscription_status"]
         }
         Insert: {
+          activation_code?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id: string
           is_activated?: boolean
+          phone?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
         }
         Update: {
+          activation_code?: string | null
           avatar_url?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
           id?: string
           is_activated?: boolean
+          phone?: string | null
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
         }
         Relationships: []
