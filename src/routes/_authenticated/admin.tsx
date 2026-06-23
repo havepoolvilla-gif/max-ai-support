@@ -10,9 +10,9 @@ import {
   upsertModule, deleteModule,
   upsertLesson, deleteLesson,
   listUsers, updateUserSubscription,
-  createStudent, grantCourseAccess, revokeCourseAccess,
+  upsertPendingStudent, listPendingStudents, deletePendingStudent,
+  grantCourseAccess, revokeCourseAccess,
 } from "@/lib/admin.functions";
-import { getActivationPassword, setActivationPassword } from "@/lib/activation.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/_authenticated/admin")({
@@ -46,7 +46,6 @@ function AdminPanel() {
             <TabsTrigger value="content">เนื้อหา (Courses)</TabsTrigger>
             <TabsTrigger value="students">จัดการนักเรียน</TabsTrigger>
             <TabsTrigger value="users">ผู้ใช้</TabsTrigger>
-            <TabsTrigger value="settings">ตั้งค่า</TabsTrigger>
           </TabsList>
           <TabsContent value="content" className="mt-6">
             <ContentManager />
@@ -56,9 +55,6 @@ function AdminPanel() {
           </TabsContent>
           <TabsContent value="users" className="mt-6">
             <UsersManager />
-          </TabsContent>
-          <TabsContent value="settings" className="mt-6">
-            <SettingsManager />
           </TabsContent>
         </Tabs>
       </main>
@@ -507,42 +503,24 @@ function UsersManager() {
   );
 }
 
-// ---------- STUDENTS MANAGER (create accounts + per-course access grants) ----------
+// ---------- STUDENTS MANAGER (pre-authorize students + per-course access) ----------
 
-function generatePassword(length = 8) {
-  const upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lower = "abcdefghijkmnpqrstuvwxyz";
-  const digits = "23456789";
-  const symbols = "!@#$%&*";
-  const all = upper + lower + digits + symbols;
+function generateCode10() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   const cryptoObj =
     typeof globalThis !== "undefined" && (globalThis as any).crypto
       ? (globalThis as any).crypto
       : null;
-  const rand = (n: number) => {
-    if (cryptoObj?.getRandomValues) {
-      const buf = new Uint32Array(1);
-      cryptoObj.getRandomValues(buf);
-      return buf[0] % n;
-    }
-    return Math.floor(Math.random() * n);
-  };
-  // Guarantee at least one of each character class
-  const required = [
-    upper[rand(upper.length)],
-    lower[rand(lower.length)],
-    digits[rand(digits.length)],
-    symbols[rand(symbols.length)],
-  ];
-  const rest = Array.from({ length: Math.max(0, length - required.length) }, () =>
-    all[rand(all.length)],
-  );
-  const chars = [...required, ...rest];
-  for (let i = chars.length - 1; i > 0; i--) {
-    const j = rand(i + 1);
-    [chars[i], chars[j]] = [chars[j], chars[i]];
+  const out: string[] = [];
+  if (cryptoObj?.getRandomValues) {
+    const buf = new Uint32Array(10);
+    cryptoObj.getRandomValues(buf);
+    for (let i = 0; i < 10; i++) out.push(alphabet[buf[i] % alphabet.length]);
+  } else {
+    for (let i = 0; i < 10; i++)
+      out.push(alphabet[Math.floor(Math.random() * alphabet.length)]);
   }
-  return chars.join("");
+  return out.join("");
 }
 
 function StudentsManager() {
@@ -555,41 +533,82 @@ function StudentsManager() {
     queryKey: ["admin", "users"],
     queryFn: () => listUsers(),
   });
+  const { data: pending } = useSuspenseQuery({
+    queryKey: ["admin", "pending-students"],
+    queryFn: () => listPendingStudents(),
+  });
 
   const courses = dash.courses;
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin", "users"] });
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ["admin", "users"] });
+    qc.invalidateQueries({ queryKey: ["admin", "pending-students"] });
+  };
 
-  // Create account form state
+  // Create form state
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [phone, setPhone] = useState("");
+  const [code, setCode] = useState("");
+  const [selectedCourses, setSelectedCourses] = useState<Set<string>>(new Set());
   const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  const toggleCourse = (id: string) => {
+    setSelectedCourses((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const createMut = useMutation({
-    mutationFn: () => createStudent({ data: { email, password, full_name: fullName } }),
-    onSuccess: (res) => {
+    mutationFn: () =>
+      upsertPendingStudent({
+        data: {
+          email,
+          full_name: fullName,
+          phone: phone || null,
+          activation_code: code,
+          course_ids: Array.from(selectedCourses),
+        },
+      }),
+    onSuccess: (res: any) => {
+      const where =
+        res?.mode === "profile"
+          ? "อัปเดตบัญชีนักเรียนที่มีอยู่แล้ว"
+          : "บันทึกข้อมูลรอเปิดใช้งาน";
       setCreateMsg({
         ok: true,
-        text: `สร้างบัญชีสำเร็จ — อีเมล: ${res.email} · รหัสผ่าน: ${password} (กรุณาคัดลอกส่งให้นักเรียน)`,
+        text: `${where} — อีเมล: ${res?.email ?? email} · รหัส 10 หลัก: ${code} (กรุณาคัดลอกส่งให้นักเรียน)`,
       });
       setFullName("");
       setEmail("");
-      setPassword("");
-      invalidate();
+      setPhone("");
+      setCode("");
+      setSelectedCourses(new Set());
+      invalidateAll();
     },
     onError: (err: any) => {
-      setCreateMsg({ ok: false, text: err?.message ?? "สร้างบัญชีไม่สำเร็จ" });
+      setCreateMsg({ ok: false, text: err?.message ?? "บันทึกไม่สำเร็จ" });
     },
+  });
+
+  const deletePendingMut = useMutation({
+    mutationFn: (em: string) => deletePendingStudent({ data: { email: em } }),
+    onSuccess: invalidateAll,
   });
 
   const grantMut = useMutation({
     mutationFn: (v: { userId: string; courseId: string }) => grantCourseAccess({ data: v }),
-    onSuccess: invalidate,
+    onSuccess: invalidateAll,
   });
   const revokeMut = useMutation({
     mutationFn: (v: { userId: string; courseId: string }) => revokeCourseAccess({ data: v }),
-    onSuccess: invalidate,
+    onSuccess: invalidateAll,
   });
+
+  const codeValid = /^[A-Za-z0-9]{10}$/.test(code);
+  const canSubmit = fullName && email && phone && codeValid && !createMut.isPending;
 
   return (
     <div className="space-y-6">
@@ -597,9 +616,10 @@ function StudentsManager() {
       <section className="rounded-xl border border-border bg-card p-6 shadow-card">
         <h3 className="font-display text-base font-bold">สร้างบัญชีนักเรียนใหม่</h3>
         <p className="mt-1 text-xs text-muted-foreground">
-          กรอกข้อมูลและกดสร้าง — ระบบจะออกบัญชีให้ทันทีและพร้อมใช้งาน
+          กรอกข้อมูลนักเรียน เลือกคอร์สที่อนุญาต และสร้างรหัสผ่าน 10 หลัก — นักเรียนจะใช้รหัสนี้เปิดใช้งานเมื่อล็อกอินด้วย Google ครั้งแรก
         </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
           <Field label="ชื่อ-นามสกุล">
             <input
               className={inputCls}
@@ -617,25 +637,65 @@ function StudentsManager() {
               placeholder="student@gmail.com"
             />
           </Field>
-          <Field label="รหัสผ่าน">
+          <Field label="เบอร์โทรศัพท์">
+            <input
+              type="tel"
+              className={inputCls}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="08X-XXX-XXXX"
+            />
+          </Field>
+          <Field label="รหัสผ่าน 10 หลัก">
             <div className="flex gap-2">
               <input
-                className={inputCls}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="อย่างน้อย 6 ตัวอักษร"
+                className={`${inputCls} font-mono tracking-widest`}
+                value={code}
+                onChange={(e) => setCode(e.target.value.slice(0, 10))}
+                maxLength={10}
+                placeholder="A1B2C3D4E5"
               />
               <button
                 type="button"
-                onClick={() => setPassword(generatePassword(8))}
+                onClick={() => setCode(generateCode10())}
                 className="shrink-0 rounded-md border border-primary/30 bg-primary/10 px-3 py-2 text-xs font-semibold text-primary hover:bg-primary/15"
               >
                 สุ่มรหัสผ่าน
               </button>
             </div>
+            {code && !codeValid && (
+              <div className="mt-1 text-[11px] text-destructive">ต้องเป็น A-Z, a-z, 0-9 จำนวน 10 ตัว</div>
+            )}
           </Field>
         </div>
-        <div className="mt-4 flex items-center justify-between gap-3">
+
+        <div className="mt-5">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            สิทธิ์เข้าถึงคอร์ส
+          </div>
+          {courses.length === 0 ? (
+            <div className="text-xs text-muted-foreground">ยังไม่มีคอร์สในระบบ</div>
+          ) : (
+            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3">
+              {courses.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm hover:border-primary/40"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCourses.has(c.id)}
+                    onChange={() => toggleCourse(c.id)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <span className="truncate">{c.title}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-5 flex items-center justify-between gap-3">
           <div className="flex-1">
             {createMsg && (
               <div
@@ -650,19 +710,69 @@ function StudentsManager() {
             )}
           </div>
           <button
-            disabled={!fullName || !email || password.length < 6 || createMut.isPending}
+            disabled={!canSubmit}
             onClick={() => {
               setCreateMsg(null);
               createMut.mutate();
             }}
             className="rounded-md bg-primary px-5 py-2 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            {createMut.isPending ? "กำลังสร้าง..." : "สร้างบัญชี"}
+            {createMut.isPending ? "กำลังบันทึก..." : "สร้างบัญชี"}
           </button>
         </div>
       </section>
 
-      {/* Students list with per-course access toggles */}
+      {/* Pending students */}
+      <section className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
+        <div className="border-b border-border p-5">
+          <h3 className="font-display text-base font-bold">นักเรียนที่รอเปิดใช้งาน</h3>
+          <p className="mt-1 text-xs text-muted-foreground">
+            รายชื่อนักเรียนที่แอดมินสร้างไว้ล่วงหน้า แต่ยังไม่ได้ล็อกอินด้วย Google
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="border-b border-border bg-sidebar text-[10px] uppercase tracking-wider text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3 text-left">ชื่อ</th>
+                <th className="px-4 py-3 text-left">Email</th>
+                <th className="px-4 py-3 text-left">เบอร์โทร</th>
+                <th className="px-4 py-3 text-left">รหัส 10 หลัก</th>
+                <th className="px-4 py-3 text-center">จำนวนคอร์ส</th>
+                <th className="px-4 py-3" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {pending.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                    ยังไม่มีรายการรอเปิดใช้งาน
+                  </td>
+                </tr>
+              )}
+              {pending.map((p: any) => (
+                <tr key={p.email}>
+                  <td className="px-4 py-3 font-medium">{p.full_name}</td>
+                  <td className="px-4 py-3 font-mono text-[11px]">{p.email}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{p.phone ?? "-"}</td>
+                  <td className="px-4 py-3 font-mono tracking-widest">{p.activation_code}</td>
+                  <td className="px-4 py-3 text-center">{p.course_ids?.length ?? 0}</td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      onClick={() => deletePendingMut.mutate(p.email)}
+                      className="inline-flex items-center gap-1 rounded-md border border-destructive/30 px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-3 w-3" /> ลบ
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      {/* Active students list with per-course access toggles */}
       <section className="overflow-hidden rounded-xl border border-border bg-card shadow-card">
         <div className="border-b border-border p-5">
           <h3 className="font-display text-base font-bold">รายชื่อนักเรียน · สิทธิ์การเข้าถึงคอร์ส</h3>
@@ -733,82 +843,6 @@ function StudentsManager() {
           </table>
         </div>
       </section>
-    </div>
-  );
-}
-
-function SettingsManager() {
-  const qc = useQueryClient();
-  const { data } = useSuspenseQuery({
-    queryKey: ["activation-password"],
-    queryFn: () => getActivationPassword(),
-  });
-  const [password, setPassword] = useState(data.password);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setPassword(data.password);
-  }, [data.password]);
-
-  const save = useMutation({
-    mutationFn: async (pw: string) => setActivationPassword({ data: { password: pw } }),
-    onSuccess: () => {
-      setSavedAt(Date.now());
-      setError(null);
-      qc.invalidateQueries({ queryKey: ["activation-password"] });
-    },
-    onError: (e: any) => setError(e?.message ?? "บันทึกไม่สำเร็จ"),
-  });
-
-  return (
-    <div className="max-w-xl rounded-2xl border border-border bg-card p-8 shadow-sm">
-      <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-        การยืนยันสิทธิ์
-      </div>
-      <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">
-        รหัสเปิดใช้งานระบบ
-      </h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        รหัสนี้จะถูกใช้โดยนักเรียนใหม่ในการยืนยันสิทธิ์ครั้งแรกหลังเข้าสู่ระบบด้วย Google
-      </p>
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (!password.trim()) return;
-          save.mutate(password.trim());
-        }}
-        className="mt-6 space-y-3"
-      >
-        <label className="block">
-          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-            รหัสเปิดใช้งาน
-          </div>
-          <input
-            type="text"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-md border border-border bg-background px-3 py-2.5 text-sm focus:border-primary focus:outline-none"
-          />
-        </label>
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-glow disabled:opacity-60"
-        >
-          {save.isPending ? "กำลังบันทึก..." : "บันทึก"}
-        </button>
-        {savedAt && (
-          <div className="text-xs text-emerald-600">บันทึกเรียบร้อยแล้ว</div>
-        )}
-        {error && (
-          <div className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-            {error}
-          </div>
-        )}
-      </form>
     </div>
   );
 }
