@@ -529,6 +529,7 @@ function LessonDialog({
 }: { moduleId: string; initial?: LessonDTO; onClose: () => void; onSaved: () => void }) {
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [videoUrl, setVideoUrl] = useState("");
   const [videoMode, setVideoMode] = useState<"upload" | "url">("upload");
   const [duration, setDuration] = useState(initial?.duration ?? 0);
@@ -557,6 +558,7 @@ function LessonDialog({
           module_id: moduleId,
           title,
           description: description || null,
+          notes: notes || null,
           // Only update video_url from this dialog when using external URL mode.
           // Upload mode writes video_url via setLessonVideo directly.
           ...(videoMode === "url" ? { video_url: videoUrl || null } : {}),
@@ -572,6 +574,7 @@ function LessonDialog({
       <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
         <Field label="ชื่อบทเรียน"><input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="คำอธิบาย"><textarea className={inputCls} rows={3} value={description ?? ""} onChange={(e) => setDescription(e.target.value)} /></Field>
+        <Field label="โน้ต/ข้อความถึงนักเรียน"><textarea className={inputCls} rows={3} value={notes ?? ""} onChange={(e) => setNotes(e.target.value)} placeholder="ข้อความเพิ่มเติมที่จะแสดงในหน้าเรียน" /></Field>
 
         <div>
           <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
