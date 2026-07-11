@@ -291,7 +291,6 @@ function CourseDialog({
   const [tagline, setTagline] = useState(initial.tagline ?? "");
   const [description, setDescription] = useState(initial.description ?? "");
   const [instructor, setInstructor] = useState(initial.instructor ?? "");
-  const [thumbnail, setThumbnail] = useState(initial.thumbnailUrl ?? "");
   const [sortOrder, setSortOrder] = useState(initial.sortOrder ?? 0);
   const [courseTier, setCourseTier] = useState(initial.courseTier ?? "");
   const [price, setPrice] = useState(initial.price ?? 0);
@@ -308,7 +307,6 @@ function CourseDialog({
           tagline: tagline || null,
           description: description || null,
           instructor: instructor || null,
-          thumbnail_url: thumbnail || null,
           sort_order: Number(sortOrder) || 0,
           course_tier: courseTier || null,
           price: Number(price) || 0,
@@ -327,7 +325,11 @@ function CourseDialog({
         <Field label="Tagline"><input className={inputCls} value={tagline ?? ""} onChange={(e) => setTagline(e.target.value)} /></Field>
         <Field label="รายละเอียด"><textarea className={inputCls} rows={3} value={description ?? ""} onChange={(e) => setDescription(e.target.value)} /></Field>
         <Field label="ผู้สอน"><input className={inputCls} value={instructor ?? ""} onChange={(e) => setInstructor(e.target.value)} /></Field>
-        <Field label="Thumbnail URL"><input className={inputCls} value={thumbnail ?? ""} onChange={(e) => setThumbnail(e.target.value)} /></Field>
+        <ThumbnailUploader
+          courseId={initial.id}
+          initialPreviewUrl={initial.thumbnailUrl ?? null}
+          onChanged={onSaved}
+        />
         <div className="grid grid-cols-2 gap-3">
           <Field label="Course Tier (slug เช่น ai_secretary)"><input className={inputCls} value={courseTier ?? ""} onChange={(e) => setCourseTier(e.target.value)} placeholder="ai_secretary" /></Field>
           <Field label="ราคา (บาท)"><input type="number" className={inputCls} value={price} onChange={(e) => setPrice(Number(e.target.value))} /></Field>
@@ -348,6 +350,134 @@ function CourseDialog({
         </button>
       </div>
     </Modal>
+  );
+}
+
+function ThumbnailUploader({
+  courseId, initialPreviewUrl, onChanged,
+}: { courseId: string | undefined; initialPreviewUrl: string | null; onChanged: () => void }) {
+  const [preview, setPreview] = useState<string | null>(initialPreviewUrl);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    if (!courseId) {
+      setError("กรุณาบันทึกคอร์สก่อน แล้วจึงอัพโหลดรูปปก");
+      return;
+    }
+    if (!file.type.startsWith("image/")) {
+      setError("กรุณาเลือกไฟล์รูปภาพ");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setError("ไฟล์ต้องมีขนาดไม่เกิน 5MB");
+      return;
+    }
+    setUploading(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let binary = "";
+      const bytes = new Uint8Array(buf);
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
+      }
+      const dataBase64 = btoa(binary);
+      const res = await uploadCourseThumbnail({
+        data: { courseId, filename: file.name, contentType: file.type, dataBase64 },
+      });
+      setPreview(res.previewUrl ?? null);
+      onChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "อัพโหลดไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!courseId) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await clearCourseThumbnail({ data: { courseId } });
+      setPreview(null);
+      onChanged();
+    } catch (e: any) {
+      setError(e?.message ?? "ลบรูปไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        รูปปกคอร์ส
+      </div>
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOver(false);
+          const f = e.dataTransfer.files?.[0];
+          if (f) void handleFile(f);
+        }}
+        className={`relative flex items-center gap-4 rounded-lg border-2 border-dashed p-4 transition ${
+          dragOver ? "border-primary bg-primary/5" : "border-border bg-background"
+        }`}
+      >
+        <div className="h-24 w-40 shrink-0 overflow-hidden rounded-md bg-muted">
+          {preview ? (
+            <img src={preview} alt="thumbnail" className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs text-muted-foreground">
+              ไม่มีรูปปก
+            </div>
+          )}
+        </div>
+        <div className="flex-1 space-y-2">
+          <div className="text-xs text-muted-foreground">
+            ลากไฟล์รูปมาวางที่นี่ หรือกดเลือกไฟล์ (PNG / JPG / WEBP ≤ 5MB)
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <label className="cursor-pointer rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">
+              {uploading ? "กำลังอัพโหลด..." : "เลือกรูปภาพ"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading || !courseId}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) void handleFile(f);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            {preview && (
+              <button
+                type="button"
+                onClick={remove}
+                disabled={uploading}
+                className="rounded-md border border-border px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+              >
+                ลบรูปปก
+              </button>
+            )}
+          </div>
+          {!courseId && (
+            <div className="text-[11px] text-muted-foreground">
+              * บันทึกคอร์สก่อน แล้วจึงอัพโหลดรูปปกได้
+            </div>
+          )}
+          {error && <div className="text-[11px] text-destructive">{error}</div>}
+        </div>
+      </div>
+    </div>
   );
 }
 
