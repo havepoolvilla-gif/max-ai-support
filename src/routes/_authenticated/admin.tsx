@@ -328,8 +328,8 @@ function CourseDialog({
         <ThumbnailUploader
           courseId={initial.id}
           initialPreviewUrl={initial.thumbnailUrl ?? null}
-          onChanged={onSaved}
         />
+
         <div className="grid grid-cols-2 gap-3">
           <Field label="Course Tier (slug เช่น ai_secretary)"><input className={inputCls} value={courseTier ?? ""} onChange={(e) => setCourseTier(e.target.value)} placeholder="ai_secretary" /></Field>
           <Field label="ราคา (บาท)"><input type="number" className={inputCls} value={price} onChange={(e) => setPrice(Number(e.target.value))} /></Field>
