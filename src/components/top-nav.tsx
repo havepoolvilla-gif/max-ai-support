@@ -37,17 +37,17 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-        <Link to="/" className="flex items-center gap-2.5 group">
+        <Link to="/" className="flex items-center gap-3.5 group">
           <img
             src={logoAsset.url}
             alt="Skill Max"
-            className="h-10 w-10 object-contain"
+            className="h-14 w-14 object-contain"
           />
-          <div className="flex flex-col leading-none">
-            <span className="font-display text-base font-semibold tracking-tight text-foreground">
+          <div className="flex flex-col leading-tight">
+            <span className="font-display text-xl font-bold tracking-tight text-foreground">
               Skill Max
             </span>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
               AI Academy
             </span>
           </div>
