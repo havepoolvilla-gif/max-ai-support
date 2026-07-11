@@ -142,6 +142,108 @@ export const clearCourseThumbnail = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- LESSON VIDEO UPLOAD ----------
+const VIDEO_BUCKET = "lesson-videos";
+
+export const createLessonVideoUploadUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        lessonId: z.string().uuid(),
+        filename: z.string().min(1).max(200),
+        contentType: z.string().min(1).max(100),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    if (!data.contentType.startsWith("video/")) {
+      throw new Error("Only video files are allowed");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: lesson, error: lErr } = await supabaseAdmin
+      .from("lessons")
+      .select("id, module_id, modules!inner(course_id)")
+      .eq("id", data.lessonId)
+      .maybeSingle();
+    if (lErr || !lesson) throw new Error("Lesson not found");
+    const courseId = (lesson as any).modules.course_id as string;
+
+    const safeName = data.filename.replace(/[^\w.\-]+/g, "_");
+    const key = `${courseId}/${data.lessonId}/${crypto.randomUUID()}-${safeName}`;
+
+    const { data: signed, error: sErr } = await supabaseAdmin.storage
+      .from(VIDEO_BUCKET)
+      .createSignedUploadUrl(key);
+    if (sErr || !signed) throw sErr ?? new Error("Failed to create upload URL");
+
+    return { path: key, token: signed.token, signedUrl: signed.signedUrl };
+  });
+
+export const setLessonVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z.object({ lessonId: z.string().uuid(), path: z.string().min(1) }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: lesson } = await supabaseAdmin
+      .from("lessons")
+      .select("id, video_url, module_id, modules!inner(course_id)")
+      .eq("id", data.lessonId)
+      .maybeSingle();
+    if (!lesson) throw new Error("Lesson not found");
+    const courseId = (lesson as any).modules.course_id as string;
+
+    if (!data.path.startsWith(`${courseId}/${data.lessonId}/`)) {
+      throw new Error("Invalid upload path");
+    }
+
+    // Remove previous file if it lives in our bucket
+    const prev = (lesson as any).video_url as string | null;
+    if (prev && prev.startsWith(`${VIDEO_BUCKET}/`)) {
+      const prevKey = prev.slice(VIDEO_BUCKET.length + 1);
+      if (prevKey !== data.path) {
+        await supabaseAdmin.storage.from(VIDEO_BUCKET).remove([prevKey]);
+      }
+    }
+
+    const stored = `${VIDEO_BUCKET}/${data.path}`;
+    const { error: updErr } = await supabaseAdmin
+      .from("lessons")
+      .update({ video_url: stored })
+      .eq("id", data.lessonId);
+    if (updErr) throw updErr;
+    return { ok: true, stored };
+  });
+
+export const clearLessonVideo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ lessonId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: lesson } = await supabaseAdmin
+      .from("lessons")
+      .select("video_url")
+      .eq("id", data.lessonId)
+      .maybeSingle();
+    const prev = lesson?.video_url;
+    if (prev && prev.startsWith(`${VIDEO_BUCKET}/`)) {
+      const prevKey = prev.slice(VIDEO_BUCKET.length + 1);
+      await supabaseAdmin.storage.from(VIDEO_BUCKET).remove([prevKey]);
+    }
+    const { error } = await supabaseAdmin
+      .from("lessons")
+      .update({ video_url: null })
+      .eq("id", data.lessonId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 // ---------- MODULES ----------
 export const upsertModule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
