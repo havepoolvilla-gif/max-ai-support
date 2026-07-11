@@ -294,6 +294,7 @@ export const upsertLesson = createServerFn({ method: "POST" })
         module_id: z.string().uuid(),
         title: z.string().min(1),
         description: z.string().nullable().optional(),
+        notes: z.string().nullable().optional(),
         video_url: z.string().nullable().optional(),
         duration_seconds: z.number().int().min(0).default(0),
         sort_order: z.number().int().default(0),
