@@ -5,6 +5,7 @@ export type LessonDTO = {
   id: string;
   title: string;
   description: string | null;
+  notes: string | null;
   videoUrl: string | null;
   duration: number;
   sortOrder: number;
@@ -80,7 +81,7 @@ export const getDashboard = createServerFn({ method: "GET" })
       supabase.from("modules").select("*").order("sort_order"),
       supabase
         .from("lessons")
-        .select("id, module_id, title, description, duration_seconds, sort_order, created_at")
+        .select("id, module_id, title, description, notes, duration_seconds, sort_order, created_at")
         .order("sort_order"),
       supabase.from("lesson_progress").select("lesson_id").eq("user_id", userId),
       supabase
@@ -102,6 +103,7 @@ export const getDashboard = createServerFn({ method: "GET" })
         id: l.id,
         title: l.title,
         description: l.description,
+        notes: l.notes,
         videoUrl: null,
         duration: l.duration_seconds,
         sortOrder: l.sort_order,
