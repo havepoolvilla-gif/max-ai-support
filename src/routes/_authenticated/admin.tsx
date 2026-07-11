@@ -12,6 +12,7 @@ import {
   listUsers, updateUserSubscription,
   upsertPendingStudent, listPendingStudents, deletePendingStudent,
   grantCourseAccess, revokeCourseAccess,
+  uploadCourseThumbnail, clearCourseThumbnail,
 } from "@/lib/admin.functions";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SupportConsole } from "@/components/admin/support-console";
