@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { z } from "zod";
 import { useSuspenseQuery, useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import {
-  ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, ListVideo, PlayCircle, Lock,
+  ArrowLeft, ArrowRight, Check, CheckCircle2, Clock, ListVideo, PlayCircle, Lock, StickyNote,
 } from "lucide-react";
 import { TopNav } from "@/components/top-nav";
 import { getDashboard, type CourseDTO, type LessonDTO } from "@/lib/courses.functions";
@@ -296,6 +296,18 @@ function Player() {
                   กดปุ่ม "ทำเครื่องหมายว่าจบ" เพื่อบันทึกความก้าวหน้า
                 </li>
               </ul>
+
+              {active.lesson.notes && (
+                <div className="mt-5 rounded-lg border border-border bg-secondary/40 p-4">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <StickyNote className="h-4 w-4 text-primary" />
+                    หมายเหตุจากอาจารย์
+                  </div>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+                    {active.lesson.notes}
+                  </p>
+                </div>
+              )}
 
               <div className="mt-6 flex items-center gap-4 border-t border-border pt-5 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1.5">
