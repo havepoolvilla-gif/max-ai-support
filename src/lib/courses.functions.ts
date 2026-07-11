@@ -121,22 +121,36 @@ export const getDashboard = createServerFn({ method: "GET" })
       modulesByCourse.set(m.course_id, arr);
     }
 
-    const courseDtos: CourseDTO[] = (courses ?? []).map((c: any) => ({
-      id: c.id,
-      title: c.title,
-      tagline: c.tagline,
-      description: c.description,
-      instructor: c.instructor,
-      thumbnailUrl: c.thumbnail_url,
-      sortOrder: c.sort_order,
-      courseTier: c.course_tier ?? null,
-      price: c.price ?? 0,
-      previewVideoUrl: c.preview_video_url ?? null,
-      purchaseUrl: c.purchase_url ?? null,
-      purchaseInfo: c.purchase_info ?? null,
-      hasAccess: isAdmin || accessSet.has(c.id),
-      modules: modulesByCourse.get(c.id) ?? [],
-    }));
+    const THUMB_BUCKET = "course-thumbnails";
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const resolveThumb = async (raw: string | null): Promise<string | null> => {
+      if (!raw) return null;
+      if (!raw.startsWith(`${THUMB_BUCKET}/`)) return raw;
+      const key = raw.slice(THUMB_BUCKET.length + 1);
+      const { data: signed } = await supabaseAdmin.storage
+        .from(THUMB_BUCKET)
+        .createSignedUrl(key, 60 * 60);
+      return signed?.signedUrl ?? null;
+    };
+
+    const courseDtos: CourseDTO[] = await Promise.all(
+      (courses ?? []).map(async (c: any) => ({
+        id: c.id,
+        title: c.title,
+        tagline: c.tagline,
+        description: c.description,
+        instructor: c.instructor,
+        thumbnailUrl: await resolveThumb(c.thumbnail_url),
+        sortOrder: c.sort_order,
+        courseTier: c.course_tier ?? null,
+        price: c.price ?? 0,
+        previewVideoUrl: c.preview_video_url ?? null,
+        purchaseUrl: c.purchase_url ?? null,
+        purchaseInfo: c.purchase_info ?? null,
+        hasAccess: isAdmin || accessSet.has(c.id),
+        modules: modulesByCourse.get(c.id) ?? [],
+      })),
+    );
 
     let enrichedLastWatched: LastWatchedDTO = null;
     if (lastWatched) {
