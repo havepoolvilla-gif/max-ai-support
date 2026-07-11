@@ -122,11 +122,12 @@ export const getDashboard = createServerFn({ method: "GET" })
     }
 
     const THUMB_BUCKET = "course-thumbnails";
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const resolveThumb = async (raw: string | null): Promise<string | null> => {
       if (!raw) return null;
       if (!raw.startsWith(`${THUMB_BUCKET}/`)) return raw;
       const key = raw.slice(THUMB_BUCKET.length + 1);
-      const { data: signed } = await supabase.storage
+      const { data: signed } = await supabaseAdmin.storage
         .from(THUMB_BUCKET)
         .createSignedUrl(key, 60 * 60);
       return signed?.signedUrl ?? null;
