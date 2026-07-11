@@ -58,6 +58,90 @@ export const deleteCourse = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// ---------- COURSE THUMBNAIL UPLOAD ----------
+const THUMB_BUCKET = "course-thumbnails";
+
+export const uploadCourseThumbnail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) =>
+    z
+      .object({
+        courseId: z.string().uuid(),
+        filename: z.string().min(1).max(200),
+        contentType: z.string().min(1).max(100),
+        dataBase64: z.string().min(1),
+      })
+      .parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    if (!data.contentType.startsWith("image/")) {
+      throw new Error("Only image files are allowed");
+    }
+    const bytes = Buffer.from(data.dataBase64, "base64");
+    if (bytes.byteLength > 5 * 1024 * 1024) {
+      throw new Error("File too large (max 5MB)");
+    }
+    const safeName = data.filename.replace(/[^\w.\-]+/g, "_");
+    const key = `${data.courseId}/${crypto.randomUUID()}-${safeName}`;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Remove any existing file for this course
+    const { data: existingCourse } = await supabaseAdmin
+      .from("courses")
+      .select("thumbnail_url")
+      .eq("id", data.courseId)
+      .maybeSingle();
+    const prev = existingCourse?.thumbnail_url;
+    if (prev && prev.startsWith(`${THUMB_BUCKET}/`)) {
+      const prevKey = prev.slice(THUMB_BUCKET.length + 1);
+      await supabaseAdmin.storage.from(THUMB_BUCKET).remove([prevKey]);
+    }
+
+    const { error: upErr } = await supabaseAdmin.storage
+      .from(THUMB_BUCKET)
+      .upload(key, bytes, { contentType: data.contentType, upsert: false });
+    if (upErr) throw upErr;
+
+    const stored = `${THUMB_BUCKET}/${key}`;
+    const { error: updErr } = await supabaseAdmin
+      .from("courses")
+      .update({ thumbnail_url: stored })
+      .eq("id", data.courseId);
+    if (updErr) throw updErr;
+
+    const { data: signed } = await supabaseAdmin.storage
+      .from(THUMB_BUCKET)
+      .createSignedUrl(key, 60 * 60);
+
+    return { path: stored, previewUrl: signed?.signedUrl ?? null };
+  });
+
+export const clearCourseThumbnail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ courseId: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existingCourse } = await supabaseAdmin
+      .from("courses")
+      .select("thumbnail_url")
+      .eq("id", data.courseId)
+      .maybeSingle();
+    const prev = existingCourse?.thumbnail_url;
+    if (prev && prev.startsWith(`${THUMB_BUCKET}/`)) {
+      const prevKey = prev.slice(THUMB_BUCKET.length + 1);
+      await supabaseAdmin.storage.from(THUMB_BUCKET).remove([prevKey]);
+    }
+    const { error } = await supabaseAdmin
+      .from("courses")
+      .update({ thumbnail_url: null })
+      .eq("id", data.courseId);
+    if (error) throw error;
+    return { ok: true };
+  });
+
 // ---------- MODULES ----------
 export const upsertModule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
