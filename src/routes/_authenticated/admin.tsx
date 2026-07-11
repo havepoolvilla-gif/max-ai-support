@@ -13,7 +13,9 @@ import {
   upsertPendingStudent, listPendingStudents, deletePendingStudent,
   grantCourseAccess, revokeCourseAccess,
   uploadCourseThumbnail, clearCourseThumbnail,
+  createLessonVideoUploadUrl, setLessonVideo, clearLessonVideo,
 } from "@/lib/admin.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { SupportConsole } from "@/components/admin/support-console";
 
@@ -528,17 +530,24 @@ function LessonDialog({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [videoUrl, setVideoUrl] = useState("");
+  const [videoMode, setVideoMode] = useState<"upload" | "url">("upload");
   const [duration, setDuration] = useState(initial?.duration ?? 0);
   const [sortOrder, setSortOrder] = useState(initial?.sortOrder ?? 0);
 
   useEffect(() => {
     if (initial?.id) {
       getLessonVideo({ data: { lessonId: initial.id } })
-        .then((r) => setVideoUrl(r.videoUrl ?? ""))
+        .then((r) => {
+          setVideoUrl(r.videoUrl ?? "");
+        })
         .catch(() => setVideoUrl(""));
     }
   }, [initial?.id]);
 
+  // detect stored mode: if lessons.video_url in DB is a bucket path we can't know here,
+  // but signed URL from getLessonVideo will be an https URL either way. Default: upload for existing lesson, url otherwise if user chooses.
+
+  const isUploadedVideo = !!initial?.id; // we allow upload for saved lessons
 
   const save = useMutation({
     mutationFn: () =>
@@ -548,20 +557,60 @@ function LessonDialog({
           module_id: moduleId,
           title,
           description: description || null,
-          video_url: videoUrl || null,
+          // Only update video_url from this dialog when using external URL mode.
+          // Upload mode writes video_url via setLessonVideo directly.
+          ...(videoMode === "url" ? { video_url: videoUrl || null } : {}),
           duration_seconds: Number(duration) || 0,
           sort_order: Number(sortOrder) || 0,
-        },
+        } as any,
       }),
     onSuccess: onSaved,
   });
 
   return (
     <Modal title={initial ? "แก้ไขบทเรียน" : "เพิ่มบทเรียน"} onClose={onClose}>
-      <div className="space-y-3">
+      <div className="max-h-[70vh] space-y-3 overflow-y-auto pr-1">
         <Field label="ชื่อบทเรียน"><input className={inputCls} value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="คำอธิบาย"><textarea className={inputCls} rows={3} value={description ?? ""} onChange={(e) => setDescription(e.target.value)} /></Field>
-        <Field label="Video URL (mp4, HLS หรือลิงก์อื่น)"><input className={inputCls} value={videoUrl ?? ""} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://..." /></Field>
+
+        <div>
+          <div className="mb-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+            วิดีโอบทเรียน
+          </div>
+          <div className="mb-3 inline-flex rounded-md border border-border bg-background p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => setVideoMode("upload")}
+              className={`px-3 py-1.5 rounded ${videoMode === "upload" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              อัพโหลดไฟล์
+            </button>
+            <button
+              type="button"
+              onClick={() => setVideoMode("url")}
+              className={`px-3 py-1.5 rounded ${videoMode === "url" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
+            >
+              ใส่ลิงก์ภายนอก
+            </button>
+          </div>
+
+          {videoMode === "upload" ? (
+            <VideoUploader
+              lessonId={initial?.id}
+              initialPreviewUrl={isUploadedVideo && videoUrl ? videoUrl : null}
+              onUploaded={(url) => setVideoUrl(url)}
+              onCleared={() => setVideoUrl("")}
+            />
+          ) : (
+            <input
+              className={inputCls}
+              value={videoUrl ?? ""}
+              onChange={(e) => setVideoUrl(e.target.value)}
+              placeholder="https://... (YouTube, Vimeo, HLS, mp4)"
+            />
+          )}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <Field label="ความยาว (วินาที)"><input type="number" className={inputCls} value={duration} onChange={(e) => setDuration(Number(e.target.value))} /></Field>
           <Field label="Sort Order"><input type="number" className={inputCls} value={sortOrder} onChange={(e) => setSortOrder(Number(e.target.value))} /></Field>
@@ -578,6 +627,138 @@ function LessonDialog({
         </button>
       </div>
     </Modal>
+  );
+}
+
+function VideoUploader({
+  lessonId, initialPreviewUrl, onUploaded, onCleared,
+}: {
+  lessonId: string | undefined;
+  initialPreviewUrl: string | null;
+  onUploaded: (url: string) => void;
+  onCleared: () => void;
+}) {
+  const qc = useQueryClient();
+  const [preview, setPreview] = useState<string | null>(initialPreviewUrl);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  useEffect(() => {
+    setPreview(initialPreviewUrl);
+  }, [initialPreviewUrl]);
+
+  const handleFile = async (file: File) => {
+    setError(null);
+    if (!lessonId) {
+      setError("กรุณาบันทึกบทเรียนก่อน แล้วจึงอัพโหลดวิดีโอ");
+      return;
+    }
+    if (!file.type.startsWith("video/")) {
+      setError("กรุณาเลือกไฟล์วิดีโอ");
+      return;
+    }
+    if (file.size > 500 * 1024 * 1024) {
+      setError("ไฟล์ต้องมีขนาดไม่เกิน 500MB");
+      return;
+    }
+    setUploading(true);
+    setProgress(0);
+    try {
+      const { path, token } = await createLessonVideoUploadUrl({
+        data: { lessonId, filename: file.name, contentType: file.type },
+      });
+      const { error: upErr } = await supabase.storage
+        .from("lesson-videos")
+        .uploadToSignedUrl(path, token, file, { contentType: file.type, upsert: false });
+      if (upErr) throw upErr;
+      setProgress(100);
+      await setLessonVideo({ data: { lessonId, path } });
+      const fresh = await getLessonVideo({ data: { lessonId } });
+      setPreview(fresh.videoUrl ?? null);
+      onUploaded(fresh.videoUrl ?? "");
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (e: any) {
+      setError(e?.message ?? "อัพโหลดไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const remove = async () => {
+    if (!lessonId) return;
+    setUploading(true);
+    setError(null);
+    try {
+      await clearLessonVideo({ data: { lessonId } });
+      setPreview(null);
+      onCleared();
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
+    } catch (e: any) {
+      setError(e?.message ?? "ลบวิดีโอไม่สำเร็จ");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div
+      onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setDragOver(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) void handleFile(f);
+      }}
+      className={`space-y-3 rounded-lg border-2 border-dashed p-4 transition ${
+        dragOver ? "border-primary bg-primary/5" : "border-border bg-background"
+      }`}
+    >
+      {preview ? (
+        <video src={preview} controls className="w-full max-h-64 rounded-md bg-black" />
+      ) : (
+        <div className="flex h-24 items-center justify-center rounded-md bg-muted text-xs text-muted-foreground">
+          ยังไม่มีวิดีโอ
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="cursor-pointer rounded-md border border-border bg-background px-3 py-1.5 text-xs font-medium hover:bg-muted">
+          {uploading ? `กำลังอัพโหลด... ${progress || ""}` : "เลือกวิดีโอ"}
+          <input
+            type="file"
+            accept="video/*"
+            className="hidden"
+            disabled={uploading || !lessonId}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleFile(f);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        {preview && (
+          <button
+            type="button"
+            onClick={remove}
+            disabled={uploading}
+            className="rounded-md border border-border px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-50"
+          >
+            ลบวิดีโอ
+          </button>
+        )}
+        <div className="text-[11px] text-muted-foreground">
+          ลากวางไฟล์ได้ (mp4/webm/mov ≤ 500MB)
+        </div>
+      </div>
+      {!lessonId && (
+        <div className="text-[11px] text-muted-foreground">
+          * บันทึกบทเรียนก่อน แล้วจึงอัพโหลดวิดีโอได้
+        </div>
+      )}
+      {error && <div className="text-[11px] text-destructive">{error}</div>}
+    </div>
   );
 }
 
