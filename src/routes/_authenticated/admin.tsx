@@ -354,8 +354,10 @@ function CourseDialog({
 }
 
 function ThumbnailUploader({
-  courseId, initialPreviewUrl, onChanged,
-}: { courseId: string | undefined; initialPreviewUrl: string | null; onChanged: () => void }) {
+  courseId, initialPreviewUrl,
+}: { courseId: string | undefined; initialPreviewUrl: string | null }) {
+  const qc = useQueryClient();
+  const onChanged = () => qc.invalidateQueries({ queryKey: ["dashboard"] });
   const [preview, setPreview] = useState<string | null>(initialPreviewUrl);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
